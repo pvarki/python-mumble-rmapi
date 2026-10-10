@@ -288,6 +288,14 @@ def test_templates_dir_missing(tmp_path: Path) -> None:
     assert api.templates(settings) == {}
 
 
+def test_shipped_templates_are_offered() -> None:
+    """Each template the image ships loads: templates() skips a file it cannot read with only a warning"""
+    shipped = Path(__file__).parents[1] / "templates"
+    offered = api.templates(Settings(templates_dir=shipped))
+    assert "komppania" in offered
+    assert sorted(offered) == sorted(path.stem for path in shipped.glob("*.yaml"))
+
+
 def test_edit_channel(client: TestClient) -> None:
     """Admins rename nets and change descriptions; clashes, bad names and unknown nets are refused"""
     tree = client.get("/api/v1/admin/channels", headers=as_("VOICE1")).json()

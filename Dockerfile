@@ -42,5 +42,6 @@ RUN pnpm build && rm dist/index.html
 FROM base AS production
 COPY --from=build /venv /venv
 COPY --from=ui /ui/dist /ui
+COPY templates /templates
 USER 10001:10001
 ENTRYPOINT ["/usr/bin/tini", "--", "/venv/bin/murmur-agent"]
