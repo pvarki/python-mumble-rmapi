@@ -24,12 +24,32 @@ One image, three parts:
     product interop
   - serves the agent's desired state, the admin API and the UI remote
 - **The UI remote** (`ui/`) is a module-federation remote that rmui loads from `/ui/mumble/remoteEntry.js`.
-  - Everyone sees their nets.
+  - Everyone sees their nets, and can join one and talk from the browser (below).
   - Admins manage unit nets and members, see mission nets, see who is online, turn voice off per callsign,
     and import and export the channel plan.
   - It is in Finnish, Swedish and English.
 
 The design is in `VOICE-PLAN.md` in `markdown-opendefence-pm`.
+
+## Talking from the browser
+
+Browsers join the same nets through `voice-gateway/` (VOICE-PLAN §4.10), with no extra login:
+
+1. The talk panel POSTs `{"slot": n}` to `/ui/mumble/api/v1/voice/token`. mumblermapi takes the client
+   certificate Traefik verified, checks it against the platform CA and its own user record (known, not
+   revoked, voice on), and signs a 60-second Ed25519 ticket for `<callsign>---web-<n>` that carries that
+   certificate. The signing key lives in memory only; murmur-agent gets the public key with its state.
+2. The panel opens `wss://mtls.<domain>/ui/mumble/ws` and sends the ticket. The gateway checks it carries
+   the connection's own certificate, then logs in to Murmur with its own certificate and the ticket as the
+   password.
+3. murmur-agent admits the gateway's certificate (from `AGENT_GATEWAY_CA`, a CA that signs nothing else)
+   only into `web-` slots, only with a valid ticket for exactly that name, and then checks the certificate
+   from the ticket like a phone's. Phones can never take `web-` slots. The sweep re-checks the stored
+   certificate and disconnects browser sessions it has no ticket for, such as after a restart.
+
+The browser speaks Mumble 1.4's protocol through the gateway: Opus from WebCodecs, played with Web Audio.
+Push-to-talk is the on-screen button or a key or extra mouse button each browser picks, Tab (sarkain) by default;
+Bluetooth PTT buttons that act as keyboards work too. It works only while the tab has focus.
 
 ## Configuration
 
@@ -41,6 +61,8 @@ The design is in `VOICE-PLAN.md` in `markdown-opendefence-pm`.
 | `AGENT_CA_BUNDLE`, `AGENT_DATA_DIR`, `AGENT_OCSP_URL`, `AGENT_POLL_SECONDS`, `AGENT_SWEEP_SECONDS` | agent | see `config.py` |
 | `MUMBLERMAPI_DATABASE`, `MUMBLERMAPI_TEMPLATES_DIR`, `MUMBLERMAPI_UI_DIR` | mumblermapi | SQLite file, channel plan templates admins may apply (`*.yaml`: `name`, `description`, `channels`, each channel with an optional `access` of `open`, `invite` or `inherit`; none is applied by default), built UI |
 | `MUMBLERMAPI_RMAPI_IDENTITY`, `MUMBLERMAPI_AGENT_IDENTITY` | mumblermapi | Linkerd identities allowed to send user events and read agent state |
+| `MUMBLERMAPI_TRAEFIK_IDENTITY`, `MUMBLERMAPI_CA_BUNDLE` | mumblermapi | The edge whose forwarded certificate voice tickets are minted for, and the CAs it must chain to |
+| `AGENT_GATEWAY_CA` | agent | The voice gateway's CA; unset lets no browser in |
 | `MUMBLERMAPI_TAK_URL`, `MUMBLERMAPI_TAK_SERVER_NAME`, `MUMBLERMAPI_TAK_CN` | mumblermapi | TAK's API, the name on TAK's certificate, our TAK identity's CN; unset leaves `Missions/` empty |
 
 Mission nets need takrmapi's `/api/v1/interop/add` and rmapi calling it without a double slash. Both are
