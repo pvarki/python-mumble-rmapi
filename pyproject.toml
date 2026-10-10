@@ -1,0 +1,59 @@
+[project]
+name = "mumblermapi"
+version = "1.0.0"
+description = "Murmur (Mumble server) integration for the OpenDefence platform"
+license = { text = "GPL-2.0-only" }
+readme = "README.md"
+# Matches the system Python of the container image, which ships the Ice 3.7 bindings Murmur speaks.
+requires-python = ">=3.12,<4.0"
+dependencies = [
+    "aiohttp>=3.9,<4.0",
+    "cryptography>=46.0",
+    "libpvarki>=2.2,<3.0",
+    "pyyaml>=6.0,<7.0",
+    "uvicorn>=0.30,<1.0",
+]
+
+[project.scripts]
+murmur-agent = "mumblermapi.agent:main"
+mumblermapi = "mumblermapi.console:main"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28,<1.0",
+    "mypy>=1.13,<2.0",
+    "pytest>=8.0,<9.0",
+    "pytest-cov>=6.0,<7.0",
+    "types-pyyaml>=6.0,<7.0",
+]
+
+[[tool.uv.index]]
+name = "nexuslocal"
+url = "https://nexus.dev.pvarki.fi/repository/pypilocal/simple"
+explicit = true
+
+[tool.uv.sources]
+libpvarki = { index = "nexuslocal" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mumblermapi"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=mumblermapi --cov-branch --cov-fail-under=90"
+
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.mypy]
+strict = true
+exclude = ['\.venv']
+
+[[tool.mypy.overrides]]
+module = ["Ice", "MumbleServer"]
+ignore_missing_imports = true
