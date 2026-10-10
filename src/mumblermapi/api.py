@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
 import json
 import logging
 import os
@@ -11,10 +13,14 @@ import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import asdict
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal
+from urllib.parse import unquote
 
 import yaml
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.serialization import Encoding
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import PlainTextResponse
@@ -25,9 +31,10 @@ from libpvarki.schemas.product import ProductDescription, ProductHealthCheckResp
 from pydantic import BaseModel, ConfigDict, Field
 
 from .channels import GUARD, ChannelPlanError, ChannelSpec, load_yaml, parse_plan
-from .identity import normalize_callsign
+from .identity import CertVerifier, IdentityError, normalize_callsign
 from .store import Channel, NoSuchChannel, Store, StoreError
 from .tak import TakSettings, watch
+from .tickets import AUDIT, mint, public_key, web_username
 
 LOGGER = logging.getLogger(__name__)
 SHORTNAME = "mumble"
@@ -58,6 +65,9 @@ class Settings(BaseModel):
     # Linkerd identities of the only callers of the user and agent endpoints
     rmapi_identity: str = "rmapi.opendefence-system.serviceaccount.identity.linkerd.cluster.local"
     agent_identity: str = "murmur.app-mumble.serviceaccount.identity.linkerd.cluster.local"
+    # The edge, whose forwarded client certificate voice tickets are minted for, and the CAs it must chain to
+    traefik_identity: str = "traefik.traefik-system.serviceaccount.identity.linkerd.cluster.local"
+    ca_bundle: Path = Path("/trust/ca-cert.pem")
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -70,6 +80,8 @@ class Settings(BaseModel):
             tak=TakSettings.from_env(env),
             rmapi_identity=env.get("MUMBLERMAPI_RMAPI_IDENTITY", cls().rmapi_identity),
             agent_identity=env.get("MUMBLERMAPI_AGENT_IDENTITY", cls().agent_identity),
+            traefik_identity=env.get("MUMBLERMAPI_TRAEFIK_IDENTITY", cls().traefik_identity),
+            ca_bundle=Path(env.get("MUMBLERMAPI_CA_BUNDLE", cls().ca_bundle)),
         )
 
 
@@ -108,6 +120,23 @@ class VoiceSetting(BaseModel):
     """Whether a callsign may use voice"""
 
     enabled: bool
+
+
+class TicketRequest(BaseModel):
+    """Which browser slot to log in. A JSON body, so a cross-site form cannot send it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    slot: int = Field(ge=1, le=9, description="This browser's slot, web-1 to web-9; each browser keeps its own")
+
+
+class Ticket(BaseModel):
+    """What the browser hands the voice gateway"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ticket: str = Field(description="The gateway's Murmur password for this login; valid for 60 s")
+    username: str = Field(description="The Mumble username it logs in, <callsign>---web-<slot>")
 
 
 class PresenceEntry(BaseModel):
@@ -231,18 +260,23 @@ def _channel_dict(channel: Channel) -> dict[str, Any]:
 
 @agent.get("/state")
 def agent_state(request: Request, store: StoreDep) -> Response:
-    """Everything murmur-agent enforces; 304 while nothing has changed"""
-    version = str(store.version())
-    if request.headers.get("if-none-match") == version:
-        return Response(status_code=304, headers={"ETag": version})
+    """Everything murmur-agent enforces; 304 while nothing has changed. The ticket key changes on every start
+    while the store's version does not, so the ETag carries both."""
+    version = store.version()
+    ticket_key = public_key(request.app.state.ticket_key)
+    etag = f"{version}-{ticket_key[:16]}"
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers={"ETag": etag})
     all_users = store.users()
     body = {
-        "version": int(version),
+        "version": version,
+        "etag": etag,
+        "ticket_keys": [ticket_key],
         "refused": sorted(u.callsign for u in all_users if u.revoked or u.voice_disabled),
         "units": [_channel_dict(c) for c in store.tree()],
         "missions": [{"name": name, "members": sorted(members)} for name, members in sorted(store.missions().items())],
     }
-    return Response(json.dumps(body), media_type="application/json", headers={"ETag": version})
+    return Response(json.dumps(body), media_type="application/json", headers={"ETag": etag})
 
 
 @agent.post("/presence")
@@ -447,6 +481,53 @@ def set_voice(callsign: str, setting: VoiceSetting, who: AdminDep, store: StoreD
     LOGGER.info("%s set voice %s for %s", who, "on" if setting.enabled else "off", callsign)
 
 
+FORWARDED_CERT = "x-forwarded-tls-client-cert"
+
+
+def forwarded_leaf(request: Request) -> bytes:
+    """The client certificate Traefik verified, as DER. Traefik sends each certificate's PEM body, leaf first,
+    comma-separated, and overwrites the header when a client sends one of its own."""
+    first = unquote(request.headers.get(FORWARDED_CERT, "")).split(",")[0]
+    try:
+        return base64.b64decode(first, validate=True)
+    except (binascii.Error, ValueError):
+        return b""
+
+
+voice = APIRouter()
+
+
+def _refuse(status: int, why: str, who: str = "") -> HTTPException:
+    LOGGER.log(AUDIT, "Refused a voice ticket%s: %s", f" for {who}" if who else "", why)
+    return HTTPException(status_code=status, detail=why)
+
+
+@voice.post("/token")
+def voice_ticket(choice: TicketRequest, request: Request, store: StoreDep) -> Ticket:
+    """A ticket for the caller's browser to join voice through the voice gateway, as the person whose client
+    certificate Traefik verified. murmur-agent checks that certificate again when the gateway logs in."""
+    settings: Settings = request.app.state.settings
+    if request.headers.get("l5d-client-id") != settings.traefik_identity:
+        raise _refuse(403, "tickets are only for requests through the edge")
+    verifier: CertVerifier | None = request.app.state.verifier
+    if verifier is None:
+        raise HTTPException(status_code=503, detail="no CA bundle to check client certificates against")
+    try:
+        identity = verifier.verify([forwarded_leaf(request)], datetime.now(UTC))
+    except IdentityError as exc:
+        raise _refuse(403, str(exc)) from exc
+    record = store.user(identity.callsign)
+    if record is None:
+        # Users enrolled before voice was installed stay unknown until rmapi next tells us about them
+        raise _refuse(404, "voice does not know this callsign yet", identity.callsign)
+    if record.revoked or record.voice_disabled:
+        raise _refuse(403, "voice is not enabled for this callsign in Deploy App", identity.callsign)
+    username = web_username(normalize_callsign(identity.callsign), choice.slot)
+    LOGGER.info("Voice ticket for %s", username)
+    leaf = identity.leaf.public_bytes(Encoding.DER)
+    return Ticket(ticket=mint(request.app.state.ticket_key, username, leaf, time.time()), username=username)
+
+
 public = APIRouter()
 
 
@@ -551,9 +632,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.store = store
     app.state.presence = (float("-inf"), {})
+    # Voice tickets live a minute, so the signing key lives in memory only and changes with every start.
+    app.state.ticket_key = Ed25519PrivateKey.generate()
+    app.state.verifier = CertVerifier.from_pem_file(settings.ca_bundle) if settings.ca_bundle.is_file() else None
     app.include_router(users, prefix="/api/v1/users")
     app.include_router(agent, prefix="/api/v1/agent")
     app.include_router(admin, prefix="/api/v1/admin")
+    app.include_router(voice, prefix="/api/v1/voice")
     app.include_router(public, prefix="/api/v1")
     app.include_router(clients, prefix="/api/v2/clients")
     app.include_router(public_v2, prefix="/api/v2")
