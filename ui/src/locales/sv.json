@@ -109,5 +109,48 @@
     "subnetsFolded_other": "{{count}} undernät",
     "groupOnline": "{{count}} i nätet eller dess undernät nu",
     "added": "Tillagt: {{names}}"
+  },
+  "talk": {
+    "title": "Tala i webbläsaren",
+    "intro": "Gå med i ett röstnät från den här enheten. Webbläsaren ber om lov att använda mikrofonen; hörlurar förhindrar eko.",
+    "connect": "Anslut till röst",
+    "connecting": "Ansluter…",
+    "connectedAs": "Ansluten: {{name}}",
+    "leave": "Lämna",
+    "inNet": "I nätet: {{net}}",
+    "pickNet": "Välj ett nät nedan.",
+    "listenOnly": "I det här nätet kan du bara lyssna.",
+    "denied": "Du får inte gå in i det här nätet.",
+    "hold": "Håll in och tala",
+    "transmitting": "Du sänder…",
+    "speaking": "Talar: {{names}}",
+    "key": "PTT-tangent:",
+    "keys": {
+      "Tab": "Tabb",
+      "Space": "Mellanslag"
+    },
+    "changeKey": "Byt",
+    "pressKey": "Tryck på önskad tangent eller musens sidoknapp (Esc avbryter)",
+    "inThisNet": "I nätet nu",
+    "web": "webbläsare",
+    "nets": "Röstnät",
+    "people_one": "{{count}} person",
+    "people_other": "{{count}} personer",
+    "group": {
+      "Units": "Enheter",
+      "Missions": "Uppdrag",
+      "Teams": "Team",
+      "Roles": "Roller"
+    },
+    "failure": {
+      "unsupported": "Den här webbläsaren stöder inte röst. Använd en ny version av Chrome, Edge eller Safari.",
+      "mic": "Mikrofonen kunde inte användas. Tillåt mikrofonen i webbläsarens inställningar.",
+      "unknown": "Röst känner inte till ditt anropsnamn än. En administratör kan åtgärda det i Deploy App.",
+      "refused": "Rösten är avstängd. Fråga en administratör.",
+      "rejected": "Röstservern avvisade anslutningen.",
+      "kicked": "Röstservern kopplade bort dig.",
+      "lost": "Anslutningen bröts. Anslut igen.",
+      "failed": "Anslutningen misslyckades."
+    }
   }
 }

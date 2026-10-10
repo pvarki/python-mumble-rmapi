@@ -109,5 +109,48 @@
     "subnetsFolded_other": "{{count}} aliverkkoa",
     "groupOnline": "{{count}} tässä verkossa tai sen aliverkoissa nyt",
     "added": "Lisätty: {{names}}"
+  },
+  "talk": {
+    "title": "Puhu selaimessa",
+    "intro": "Liity puheverkkoon tällä laitteella. Selain kysyy lupaa mikrofoniin; kuulokkeet estävät kaiun.",
+    "connect": "Liity puheeseen",
+    "connecting": "Yhdistetään…",
+    "connectedAs": "Yhdistetty: {{name}}",
+    "leave": "Poistu",
+    "inNet": "Verkossa: {{net}}",
+    "pickNet": "Valitse verkko alta.",
+    "listenOnly": "Tässä verkossa voit vain kuunnella.",
+    "denied": "Et pääse tähän verkkoon.",
+    "hold": "Pidä painettuna ja puhu",
+    "transmitting": "Lähetät…",
+    "speaking": "Puhuu: {{names}}",
+    "key": "PTT-näppäin:",
+    "keys": {
+      "Tab": "Sarkain",
+      "Space": "Välilyönti"
+    },
+    "changeKey": "Vaihda",
+    "pressKey": "Paina haluamaasi näppäintä tai hiiren sivupainiketta (Esc peruu)",
+    "inThisNet": "Verkossa nyt",
+    "web": "selain",
+    "nets": "Puheverkot",
+    "people_one": "{{count}} henkilö",
+    "people_other": "{{count}} henkilöä",
+    "group": {
+      "Units": "Yksiköt",
+      "Missions": "Tehtävät",
+      "Teams": "Tiimit",
+      "Roles": "Roolit"
+    },
+    "failure": {
+      "unsupported": "Tämä selain ei tue puhetta. Käytä Chromen, Edgen tai Safarin uutta versiota.",
+      "mic": "Mikrofonia ei saatu käyttöön. Salli mikrofoni selaimen asetuksista.",
+      "unknown": "Puhe ei vielä tunne tunnustasi. Ylläpitäjä voi korjata sen Deploy Appissa.",
+      "refused": "Puhe on estetty. Kysy ylläpitäjältä.",
+      "rejected": "Puhepalvelin hylkäsi yhteyden.",
+      "kicked": "Puhepalvelin katkaisi yhteyden.",
+      "lost": "Yhteys katkesi. Liity uudelleen.",
+      "failed": "Yhdistäminen epäonnistui."
+    }
   }
 }

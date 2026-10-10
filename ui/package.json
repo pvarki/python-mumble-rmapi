@@ -8,7 +8,7 @@
   "scripts": {
     "build": "tsc && vite build",
     "dev": "vite --port 4175",
-    "test": "node --test --experimental-test-coverage test/paths.test.mjs test/api.test.mjs"
+    "test": "node --test --experimental-test-coverage test/paths.test.mjs test/api.test.mjs test/mumble.test.mjs test/ptt.test.mjs test/nets.test.mjs"
   },
   "dependencies": {
     "i18next": "^25.6.2",

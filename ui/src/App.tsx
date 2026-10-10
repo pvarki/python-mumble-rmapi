@@ -6,6 +6,7 @@ import { addTranslations, NS } from "./i18n";
 import { Flag } from "./icons";
 import { MISSIONS, pathLabel } from "./paths";
 import * as ui from "./ui";
+import { Talk } from "./voice/Talk";
 
 // What mumblermapi's /api/v2/clients/data returns for the signed-in user, by way of rmapi
 export interface ClientData {
@@ -59,6 +60,7 @@ function VoicePage({ data }: { data: ClientData }) {
     <div className={ui.PAGE}>
       <h1 className={ui.H1}>{t("title")}</h1>
       <YouLine data={data} />
+      {data.voice !== false && <Talk />}
       {data.admin && <Admin />}
     </div>
   );

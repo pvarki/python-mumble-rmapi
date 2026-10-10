@@ -109,5 +109,48 @@
     "subnetsFolded_other": "{{count}} sub-nets",
     "groupOnline": "{{count}} in this net or its sub-nets now",
     "added": "Added: {{names}}"
+  },
+  "talk": {
+    "title": "Talk in the browser",
+    "intro": "Join a voice net from this device. The browser asks to use the microphone; headphones prevent echo.",
+    "connect": "Join voice",
+    "connecting": "Connecting…",
+    "connectedAs": "Connected: {{name}}",
+    "leave": "Leave",
+    "inNet": "In net: {{net}}",
+    "pickNet": "Pick a net below.",
+    "listenOnly": "You can only listen in this net.",
+    "denied": "You may not enter that net.",
+    "hold": "Hold and talk",
+    "transmitting": "Transmitting…",
+    "speaking": "Talking: {{names}}",
+    "key": "PTT key:",
+    "keys": {
+      "Tab": "Tab",
+      "Space": "Space"
+    },
+    "changeKey": "Change",
+    "pressKey": "Press the key or side mouse button you want (Esc cancels)",
+    "inThisNet": "In this net now",
+    "web": "browser",
+    "nets": "Voice nets",
+    "people_one": "{{count}} person",
+    "people_other": "{{count}} people",
+    "group": {
+      "Units": "Units",
+      "Missions": "Missions",
+      "Teams": "Teams",
+      "Roles": "Roles"
+    },
+    "failure": {
+      "unsupported": "This browser cannot do voice. Use a recent Chrome, Edge or Safari.",
+      "mic": "Could not use the microphone. Allow it in the browser's settings.",
+      "unknown": "Voice does not know your callsign yet. An admin can fix that in Deploy App.",
+      "refused": "Voice off. Ask an admin.",
+      "rejected": "The voice server refused the connection.",
+      "kicked": "The voice server disconnected you.",
+      "lost": "The connection dropped. Join again.",
+      "failed": "Could not connect."
+    }
   }
 }
