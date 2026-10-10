@@ -26,6 +26,7 @@ class AgentConfig:
     state_url: str | None = None  # mumblermapi's /api/v1/agent/state; None runs on the channels file alone
     poll_seconds: float = 5.0  # how soon mumblermapi changes reach Murmur
     presence_url: str | None = None  # where to report who is connected; None reports nothing
+    gateway_ca: Path | None = None  # the voice gateway's own CA; None lets no browser in
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] = os.environ) -> AgentConfig:
@@ -49,4 +50,5 @@ class AgentConfig:
             state_url=env.get("AGENT_STATE_URL") or None,
             poll_seconds=float(env.get("AGENT_POLL_SECONDS", defaults.poll_seconds)),
             presence_url=env.get("AGENT_PRESENCE_URL") or None,
+            gateway_ca=Path(env["AGENT_GATEWAY_CA"]) if env.get("AGENT_GATEWAY_CA") else None,
         )

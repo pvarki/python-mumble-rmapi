@@ -17,7 +17,7 @@ from importlib.resources import files
 from types import ModuleType
 from typing import Any
 
-from libpvarki.logging import init_logging
+from libpvarki.logging import add_trace_and_audit, init_logging
 
 from .authenticator import Authenticator
 from .channels import ExistingChannel, desired_tree, load_plan, prune, reconcile
@@ -58,9 +58,10 @@ def _servant(mumble: ModuleType, auth: Authenticator) -> Any:
             certstrong: bool,
             current: Any = None,
         ) -> tuple[int, str, list[str]]:
-            # Passwords are not credentials here, and certstrong is Murmur's notion of trust, not ours.
-            del pw, certhash, certstrong, current
-            return auth.authenticate(name, [bytes(cert) for cert in certificates]), "", []
+            # The password is a credential only from the voice gateway, where it is a mumblermapi ticket. certstrong
+            # is Murmur's notion of trust, not ours.
+            del certhash, certstrong, current
+            return auth.authenticate(name, [bytes(cert) for cert in certificates], pw), "", []
 
         def getInfo(self, id: int, current: Any = None) -> tuple[bool, dict[Any, str]]:
             del current
@@ -256,6 +257,7 @@ def run(config: AgentConfig, stop: threading.Event) -> None:  # pragma: no cover
         OcspChecker(url_override=config.ocsp_url, cache_seconds=config.ocsp_cache_seconds),
         ids,
         policy=policy,
+        gateway=CertVerifier.from_pem_file(config.gateway_ca) if config.gateway_ca else None,
     )
 
     properties = ice.createProperties()
@@ -291,6 +293,7 @@ def run(config: AgentConfig, stop: threading.Event) -> None:  # pragma: no cover
 
 def main() -> None:  # pragma: no cover  # the container entrypoint
     """murmur-agent entrypoint"""
+    add_trace_and_audit()
     init_logging(logging.INFO)
     config = AgentConfig.from_env()
     stop = threading.Event()

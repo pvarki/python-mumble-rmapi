@@ -173,7 +173,9 @@ class FakeAuth:
             return Refusal("OCSP down", transient=True)
         return None
 
-    def authenticate(self, name: str, certificates: list[bytes]) -> int:
+    def authenticate(self, name: str, certificates: list[bytes], ticket: str = "") -> int:
+        if ticket == "signed":
+            return 8
         return 7 if certificates == [b"cert"] else -1
 
     def id_to_name(self, user_id: int) -> str:
@@ -205,6 +207,7 @@ def test_servant() -> None:
     """Murmur's ServerAuthenticator calls reach the authenticator"""
     servant = agent._servant(MUMBLE, FakeAuth())  # type: ignore[arg-type]
     assert servant.authenticate("VOICE1---a", "", [b"cert"], "hash", True) == (7, "", [])
+    assert servant.authenticate("VOICE1---web-1", "signed", [b"gateway"], "hash", False) == (8, "", [])
     assert servant.getInfo(7) == (True, {MUMBLE.UserInfo.UserName: "VOICE1---a"})
     assert servant.getInfo(8) == (False, {})
     assert servant.nameToId("VOICE1---a") == 7 and servant.idToName(7) == "VOICE1---a"

@@ -8,9 +8,10 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Protocol
 
-from .identity import CertVerifier, Identity, IdentityError, bind, parse_username
+from .identity import CertVerifier, Identity, IdentityError, Username, bind, parse_username
 from .ocsp import OcspUnavailable
 from .policy import Policy
+from .tickets import AUDIT, is_web_slot, verify
 from .userids import UserIds
 
 LOGGER = logging.getLogger(__name__)
@@ -43,7 +44,12 @@ class Refusal:
 
 class Authenticator:
     """Accepts a connection only on a valid, unrevoked platform certificate whose CN is the username's callsign,
-    and only while mumblermapi does not refuse that callsign"""
+    and only while mumblermapi does not refuse that callsign.
+
+    Browsers come in through the voice gateway, whose own certificate (from a CA that signs nothing else) fills
+    web slots only. Its password is a ticket from mumblermapi carrying the user's certificate, and that
+    certificate then gets every check a phone's does.
+    """
 
     def __init__(
         self,
@@ -52,19 +58,53 @@ class Authenticator:
         ids: UserIds,
         clock: Callable[[], datetime] = _utcnow,
         policy: Callable[[], Policy] = Policy,
+        gateway: CertVerifier | None = None,
     ) -> None:
         self._verifier = verifier
         self._revocation = revocation
         self._ids = ids
         self._clock = clock
         self._policy = policy
+        self._gateway = gateway
+        # The certificate each web session's ticket carried, for the sweep. In memory only: after a restart the
+        # sweep finds none and disconnects browsers, which reconnect with fresh tickets.
+        self._web_leaves: dict[str, bytes] = {}
 
-    def refusal(self, name: str, certificates: list[bytes]) -> Refusal | None:
-        """Why this connection must not be in, or None when it may"""
+    def _from_gateway(self, certificates: list[bytes], now: datetime) -> bool:
+        if self._gateway is None:
+            return False
+        try:
+            self._gateway.verify(certificates, now)
+        except IdentityError:
+            return False
+        return True
+
+    def _chain(self, name: str, username: Username, certificates: list[bytes], ticket: str | None) -> list[bytes]:
+        """The chain to check: the connection's own, or for a browser the certificate its ticket carried.
+        ticket None is the sweep, which uses the certificate stored at login."""
+        now = self._clock()
+        gateway = self._from_gateway(certificates, now)
+        if not is_web_slot(username.slot):
+            if gateway:
+                raise IdentityError("the voice gateway logs in web slots only")
+            return certificates
+        if not gateway:
+            raise IdentityError("web slots are only for the voice gateway")
+        if ticket is None:
+            leaf = self._web_leaves.get(name)
+            if leaf is None:
+                raise IdentityError("no ticket on record for this browser session")
+            return [leaf]
+        return [verify(ticket, self._policy().ticket_keys, name, now.timestamp())]
+
+    def refusal(self, name: str, certificates: list[bytes], ticket: str | None = None) -> Refusal | None:
+        """Why this connection must not be in, or None when it may. ticket is the login password; the sweep
+        leaves it out."""
         now = self._clock()
         try:
             username = parse_username(name)
-            identity = self._verifier.verify(certificates, now)
+            chain = self._chain(name, username, certificates, ticket)
+            identity = self._verifier.verify(chain, now)
             bind(username, identity)
             if self._policy().refuses(identity.callsign):
                 return Refusal("revoked or voice disabled in Deploy App")
@@ -74,13 +114,16 @@ class Authenticator:
             return Refusal(str(exc))
         except OcspUnavailable as exc:
             return Refusal(str(exc), transient=True)
+        if ticket is not None and is_web_slot(username.slot):
+            self._web_leaves[name] = chain[0]
         return None
 
-    def authenticate(self, name: str, certificates: list[bytes]) -> int:
-        """Murmur's authenticate(): a user id, REJECT, or TRY_LATER while revocation cannot be checked"""
-        refusal = self.refusal(name, certificates)
+    def authenticate(self, name: str, certificates: list[bytes], ticket: str = "") -> int:
+        """Murmur's authenticate(): a user id, REJECT, or TRY_LATER while revocation cannot be checked. ticket is
+        the login's password, which matters only from the voice gateway."""
+        refusal = self.refusal(name, certificates, ticket)
         if refusal is not None:
-            LOGGER.warning("Refused %r: %s", name, refusal.reason)
+            LOGGER.log(AUDIT, "Refused %r: %s", name, refusal.reason)
             return TRY_LATER if refusal.transient else REJECT
         user_id = self._ids.get_or_assign(name)
         LOGGER.info("Accepted %r as user %d", name, user_id)

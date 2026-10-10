@@ -34,6 +34,7 @@ def test_overrides() -> None:
             "AGENT_STATE_URL": "http://mumblermapi/api/v1/agent/state",
             "AGENT_POLL_SECONDS": "2",
             "AGENT_PRESENCE_URL": "http://mumblermapi/api/v1/agent/presence",
+            "AGENT_GATEWAY_CA": "/gateway/ca.crt",
         }
     )
     assert config == AgentConfig(
@@ -51,6 +52,7 @@ def test_overrides() -> None:
         state_url="http://mumblermapi/api/v1/agent/state",
         poll_seconds=2.0,
         presence_url="http://mumblermapi/api/v1/agent/presence",
+        gateway_ca=Path("/gateway/ca.crt"),
     )
 
 

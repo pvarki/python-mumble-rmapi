@@ -35,6 +35,7 @@ class Policy:
     refused: frozenset[str] = frozenset()
     units: tuple[Unit, ...] = ()
     missions: tuple[Unit, ...] = ()
+    ticket_keys: frozenset[str] = frozenset()  # mumblermapi's public keys for voice tickets
 
     def refuses(self, callsign: str) -> bool:
         """Revoked in rmapi, or voice turned off by an admin"""
@@ -78,13 +79,15 @@ def parse_state(data: object) -> Policy:
     if not isinstance(data, dict):
         raise TypeError("state is not an object")
     refused, units, missions = data.get("refused", []), data.get("units", []), data.get("missions", [])
-    if not isinstance(refused, list) or not isinstance(units, list) or not isinstance(missions, list):
+    keys = data.get("ticket_keys", [])
+    if not all(isinstance(x, list) for x in (refused, units, missions, keys)):
         raise TypeError("malformed state")
     return Policy(
         version=int(data["version"]),
         refused=frozenset(str(r) for r in refused),
         units=tuple(_unit(u) for u in units),
         missions=tuple(_unit({"id": 0} | m) for m in missions if isinstance(m, dict) and m.get("name") != GUARD),
+        ticket_keys=frozenset(str(k) for k in keys),
     )
 
 
@@ -140,11 +143,13 @@ class PolicySource:
                 return False
             if status != 200:
                 raise ValueError(f"HTTP {status}")
-            policy = parse_state(json.loads(body))
+            data = json.loads(body)
+            policy = parse_state(data)
         except (OSError, ValueError, TypeError, KeyError) as exc:
             LOGGER.warning("Keeping policy version %d, mumblermapi unavailable: %s", self.policy.version, exc)
             return False
-        self._etag = str(policy.version)
+        # The ETag also follows mumblermapi's ticket key; older mumblermapis send the version alone
+        self._etag = str(data.get("etag", policy.version))
         self.ready = True
         changed = policy != self.policy
         self.policy = policy
