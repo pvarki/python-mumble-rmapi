@@ -261,7 +261,15 @@ def test_lifespan_runs_the_mission_watcher(tmp_path: Path) -> None:
         tak_url="https://127.0.0.1:9", tak_server_name="tak.example.fi", cn="mumble.example.fi",
         rmapi_url="http://127.0.0.1:9/", data_dir=tmp_path / "tak", poll_seconds=60,
     )  # fmt: skip
-    app = create_app(Settings(database=tmp_path / "db.sqlite", ui_dir=tmp_path / "no-ui", tak=tak_settings))
+    # Empty health URLs: the health check, which also runs for the app's life, asks nothing outside the test
+    settings = Settings(
+        database=tmp_path / "db.sqlite",
+        ui_dir=tmp_path / "no-ui",
+        tak=tak_settings,
+        proxy_ready_url="",
+        gateway_ready_url="",
+    )
+    app = create_app(settings)
     with TestClient(app) as client:
         assert client.get("/api/v1/healthcheck").status_code == 200
         assert client.get("/ui/mumble/remoteEntry.js").status_code == 404

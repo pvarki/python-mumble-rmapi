@@ -31,6 +31,7 @@ from libpvarki.schemas.product import ProductDescription, ProductHealthCheckResp
 from pydantic import BaseModel, ConfigDict, Field
 
 from .channels import GUARD, ChannelPlanError, ChannelSpec, load_yaml, parse_plan
+from .health import watch as watch_health
 from .identity import CertVerifier, IdentityError, normalize_callsign
 from .store import Channel, NoSuchChannel, Store, StoreError
 from .tak import TakSettings, watch
@@ -68,6 +69,9 @@ class Settings(BaseModel):
     # The edge, whose forwarded client certificate voice tickets are minted for, and the CAs it must chain to
     traefik_identity: str = "traefik.traefik-system.serviceaccount.identity.linkerd.cluster.local"
     ca_bundle: Path = Path("/trust/ca-cert.pem")
+    # What the health check asks (health.py); an empty URL is not checked
+    proxy_ready_url: str = "http://127.0.0.1:4191/ready"  # this pod's Linkerd proxy
+    gateway_ready_url: str = "http://voice-gateway.app-mumble.svc.cluster.local:8080/readyz"
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -82,6 +86,8 @@ class Settings(BaseModel):
             agent_identity=env.get("MUMBLERMAPI_AGENT_IDENTITY", cls().agent_identity),
             traefik_identity=env.get("MUMBLERMAPI_TRAEFIK_IDENTITY", cls().traefik_identity),
             ca_bundle=Path(env.get("MUMBLERMAPI_CA_BUNDLE", cls().ca_bundle)),
+            proxy_ready_url=env.get("MUMBLERMAPI_PROXY_READY_URL", cls().proxy_ready_url),
+            gateway_ready_url=env.get("MUMBLERMAPI_GATEWAY_READY_URL", cls().gateway_ready_url),
         )
 
 
@@ -532,9 +538,11 @@ public = APIRouter()
 
 
 @public.get("/healthcheck")
-def healthcheck() -> ProductHealthCheckResponse:
-    """Liveness for rmapi and the kubelet"""
-    return ProductHealthCheckResponse(healthy=True, extra="")
+def healthcheck(request: Request) -> ProductHealthCheckResponse:
+    """Voice's health for rmapi, from the background check, with what is wrong in extra. Always 200: the kubelet
+    probes this too, and restarting the process mends none of what the check finds."""
+    found = request.app.state.health
+    return ProductHealthCheckResponse(healthy=not found, extra="; ".join(found))
 
 
 @public.get("/description/{language}")
@@ -620,11 +628,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     store = Store(settings.database)
 
     @asynccontextmanager
-    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         stop = asyncio.Event()
         missions = asyncio.create_task(watch(store, settings.tak, stop)) if settings.tak else None
+        health = asyncio.create_task(watch_health(app, stop, PRESENCE_TTL))
         yield
         stop.set()
+        await health
         if missions:
             await missions
 
@@ -632,6 +642,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.store = store
     app.state.presence = (float("-inf"), {})
+    app.state.health = []  # what keeps voice from working, from the background check (health.py)
     # Voice tickets live a minute, so the signing key lives in memory only and changes with every start.
     app.state.ticket_key = Ed25519PrivateKey.generate()
     app.state.verifier = CertVerifier.from_pem_file(settings.ca_bundle) if settings.ca_bundle.is_file() else None

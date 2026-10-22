@@ -7,7 +7,7 @@ readme = "README.md"
 # Matches the system Python of the container image, which ships the Ice 3.7 bindings Murmur speaks.
 requires-python = ">=3.12,<4.0"
 dependencies = [
-    "aiohttp>=3.9,<4.0",
+    "aiohttp>=3.11,<4.0",  # ClientConnectorDNSError names a failed lookup
     "cryptography>=46.0",
     "fastapi>=0.143,<1.0",
     "libpvarki>=2.2,<3.0",

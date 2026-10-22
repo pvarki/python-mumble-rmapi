@@ -51,6 +51,19 @@ The browser speaks Mumble 1.4's protocol through the gateway: Opus from WebCodec
 Push-to-talk is the on-screen button or a key or extra mouse button each browser picks, Tab (sarkain) by default;
 Bluetooth PTT buttons that act as keyboards work too. It works only while the tab has focus.
 
+## Health
+
+mumblermapi's `/api/v1/healthcheck` is voice's health for rmapi, which rmui shows. It always answers 200, as the
+kubelet probes it too and a restart mends none of what it finds. `healthy` and `extra` come from a check that runs
+every 15 s and logs each change:
+
+- `no ready Linkerd proxy in mumblermapi's pod (<cause>)`: rmapi, murmur-agent and browser tickets are refused
+- `murmur-agent has not reported for <n> s` (or since mumblermapi started): Murmur or the agent is away or refused
+- `the voice gateway is not ready (<cause>)`: browsers cannot talk
+
+`<cause>` is the HTTP status that came back, or why none did: `name resolution failed`, `connection refused` or
+`timed out` (after 2 s). A failed lookup points at the cluster, such as in-cluster DNS or the node, not at voice.
+
 ## Configuration
 
 | Variable | Used by | Meaning |
@@ -63,6 +76,7 @@ Bluetooth PTT buttons that act as keyboards work too. It works only while the ta
 | `MUMBLERMAPI_RMAPI_IDENTITY`, `MUMBLERMAPI_AGENT_IDENTITY` | mumblermapi | Linkerd identities allowed to send user events and read agent state |
 | `MUMBLERMAPI_TRAEFIK_IDENTITY`, `MUMBLERMAPI_CA_BUNDLE` | mumblermapi | The edge whose forwarded certificate voice tickets are minted for, and the CAs it must chain to |
 | `AGENT_GATEWAY_CA` | agent | The voice gateway's CA; unset lets no browser in |
+| `MUMBLERMAPI_PROXY_READY_URL`, `MUMBLERMAPI_GATEWAY_READY_URL` | mumblermapi | What the health check asks: this pod's Linkerd proxy, default `http://127.0.0.1:4191/ready`, and the voice gateway's `/readyz`; empty skips that check |
 | `MUMBLERMAPI_TAK_URL`, `MUMBLERMAPI_TAK_SERVER_NAME`, `MUMBLERMAPI_TAK_CN` | mumblermapi | TAK's API, the name on TAK's certificate, our TAK identity's CN; unset leaves `Missions/` empty |
 
 Mission nets need takrmapi's `/api/v1/interop/add` and rmapi calling it without a double slash. Both are
