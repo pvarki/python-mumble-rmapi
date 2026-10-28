@@ -122,7 +122,7 @@ def _closed_port() -> int:
 
 
 def test_fetcher_names_why_there_was_no_answer() -> None:
-    """The causes the whole-quail outages showed, from real sockets: no name, no listener, no answer"""
+    """The causes a node outage showed, from real sockets: no name, no listener, no answer"""
     assert asyncio.run(_answer_from(_status_503)) == 503
     assert asyncio.run(_answer_from(_silent)) == "timed out"
     assert asyncio.run(_answer_from(_hang_up)) == "Server disconnected"
