@@ -11,7 +11,7 @@ from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.x509.verification import Criticality, ExtensionPolicy, PolicyBuilder, Store, VerificationError
 
-# Vx and XVoice connect as "<callsign>---<slot>", with spaces in the callsign replaced by "_".
+# ODVoice (built from XVoice) and Vx connect as "<callsign>---<slot>", with spaces in the callsign replaced by "_".
 SLOT_SEPARATOR = "---"
 _SLOT_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 

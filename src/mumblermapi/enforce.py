@@ -171,8 +171,9 @@ def refused(policy: Policy, sessions: Iterable[Session]) -> tuple[int, ...]:
 def shadows(channels: list[ExistingChannel], missions_root: int) -> dict[int, int]:
     """Temporary channels outside Missions/ named like a mission net, mapped to that net.
 
-    XVoice creates a temporary channel named after the mission when it finds no net by that name, and it finds
-    nets by name alone, so such a channel would be an ungated copy of the mission's net.
+    A client that finds nets by name alone may create a temporary channel named after a mission net it cannot
+    find, as XVoice, which ODVoice is built from, did. Such a channel would be an ungated copy of the mission's
+    net.
     """
     parents = {c.id: c.parent for c in channels}
     nets = {c.name: c.id for c in channels if c.parent == missions_root}
@@ -206,7 +207,7 @@ def violations(
 
     Murmur checks ACLs only when someone enters or starts listening, and routes audio to listeners without
     checking again, so whoever lost access since has to be removed here. Sessions in a shadowing channel go to
-    the real net when it admits them, which XVoice takes as the net it wanted, and to the root otherwise.
+    the real net when it admits them, which such a client takes as the net it wanted, and to the root otherwise.
     """
     shadowed = shadowed or {}
     callsigns = {s.session: callsign_of(s.name) for s in sessions}
