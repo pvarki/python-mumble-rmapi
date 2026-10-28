@@ -24,6 +24,7 @@ mumblermapi = "mumblermapi.console:main"
 dev = [
     "httpx>=0.28,<1.0",
     "mypy>=1.13,<2.0",
+    "pyrefly>=1.3,<2",
     "pytest>=8.0,<9.0",
     "pytest-cov>=6.0,<7.0",
     "types-pyyaml>=6.0,<7.0",
@@ -59,3 +60,9 @@ exclude = ['\.venv']
 [[tool.mypy.overrides]]
 module = ["Ice", "MumbleServer"]
 ignore_missing_imports = true
+
+[tool.pyrefly]
+# Ice comes from the container image and MumbleServer from loading Murmur's slice at run time
+replace-imports-with-any = ["Ice", "MumbleServer"]
+# The tests are a package of their own beside src
+search-path = ["src", "."]

@@ -7,3 +7,4 @@ __pycache__/
 .prettier_cache/
 .coverage
 pytest*.xml
+.prettier_cache

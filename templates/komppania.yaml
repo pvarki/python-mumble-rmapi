@@ -2,19 +2,19 @@
 name: Komppanian vakiokanavasuunnitelma
 description: Tehtäväkanavat, komppanian johto, tulenjohto ja yleiskanava
 channels:
-- name: 00 Tehtäväkanavat
-  description: "Tilannepäivystys ja käskettäessä käyttöön otettavat tehtäväkanavat"
-  channels:
-  - name: 00A TIKE
-    description: "Tilannepäivystys + kaikki tehtävää suorittavat -> radio check aloittaessa tehtävää ja irroittautumisviesti, kun päättää"
-  - name: 00B
-    description: "Tehtäväkanava B, käskettäessä käyttöön: käsketty B + käsketyt asiakkaat"
-  - name: 00C
-    description: "Tehtäväkanava C, käskettäessä käyttöön: käsketty C + käsketyt asiakkaat"
-- name: 01 Johto
-  description: "Komppanian johto"
-- name: 07 TJ
-  description: "Tulenjohto"
-- name: General
-  description: "Yleiskanava, avoin kaikille"
-  access: open
+  - name: 00 Tehtäväkanavat
+    description: "Tilannepäivystys ja käskettäessä käyttöön otettavat tehtäväkanavat"
+    channels:
+      - name: 00A TIKE
+        description: "Tilannepäivystys + kaikki tehtävää suorittavat -> radio check aloittaessa tehtävää ja irroittautumisviesti, kun päättää"
+      - name: 00B
+        description: "Tehtäväkanava B, käskettäessä käyttöön: käsketty B + käsketyt asiakkaat"
+      - name: 00C
+        description: "Tehtäväkanava C, käskettäessä käyttöön: käsketty C + käsketyt asiakkaat"
+  - name: 01 Johto
+    description: "Komppanian johto"
+  - name: 07 TJ
+    description: "Tulenjohto"
+  - name: General
+    description: "Yleiskanava, avoin kaikille"
+    access: open

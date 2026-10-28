@@ -1,0 +1,47 @@
+name: Pull request
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    # The version bump only: prek runs below, where its hooks' Python, UI and tools are installed
+    uses: pvarki/config-ci-library/.github/workflows/general-check.yml@5a0c4ca0d9e53135ea5ed3427840641d4ccb6aa2 # v0.14.2+261026
+    with:
+      run-prek: false
+
+  prek:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pvarki/config-ci-library/.github/actions/setup-python@5a0c4ca0d9e53135ea5ed3427840641d4ccb6aa2 # v0.14.2+261026
+        with:
+          python-version: "3.12"
+      - uses: pvarki/config-ci-library/.github/actions/setup-typescript@5a0c4ca0d9e53135ea5ed3427840641d4ccb6aa2 # v0.14.2+261026
+        with:
+          node-version: "22"
+          working-directory: ui
+      # pyrefly's hook runs the project's own pyrefly
+      - run: echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+      - uses: j178/prek-action@4e14d07f9231acabce116ccfca13b13dd9755ece # v3.0.0
+
+  publish:
+    needs: [checks, prek]
+    runs-on: arc-runner-set
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pvarki/config-ci-library/.github/actions/publish-image@5a0c4ca0d9e53135ea5ed3427840641d4ccb6aa2 # v0.14.2+261026
+        with:
+          product: mumble
+          component: integration
+          dockerhub-username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          acr-repo: ${{ vars.ACR_REPO }}
+          acr-username: ${{ vars.ACR_USERNAME }}
+          acr-token: ${{ secrets.ACR_TOKEN }}
