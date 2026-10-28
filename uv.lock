@@ -964,7 +964,7 @@ wheels = [
 
 [[package]]
 name = "mumblermapi"
-version = "1.0.0"
+version = "1.0.0+261028"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
