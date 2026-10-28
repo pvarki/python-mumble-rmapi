@@ -23,6 +23,7 @@ import aiohttp
 from cryptography import x509
 from libpvarki.mtlshelp.csr import async_create_client_csr, async_create_keypair
 
+from . import kraftwerk
 from .channels import NAME_RE
 from .store import Store
 
@@ -43,16 +44,24 @@ class TakSettings:
     poll_seconds: float = 30.0
 
     @classmethod
-    def from_env(cls, env: Mapping[str, str] = os.environ) -> TakSettings | None:
-        """MUMBLERMAPI_TAK_* variables; None, and no missions, when TAK is not configured"""
+    def from_env(
+        cls, env: Mapping[str, str] = os.environ, manifest: Mapping[str, Any] | None = None
+    ) -> TakSettings | None:
+        """MUMBLERMAPI_TAK_* variables over the product manifest; None, and no missions, when TAK is not
+        configured. Our CN is the product's DNS name and rmapi is where the manifest says."""
         url = env.get("MUMBLERMAPI_TAK_URL")
         if not url:
             return None
+        manifest = manifest or {}
+        cn = env.get("MUMBLERMAPI_TAK_CN") or kraftwerk.value(manifest, "product", "dns")
+        if not cn:
+            raise ValueError("TAK needs MUMBLERMAPI_TAK_CN or the manifest's product.dns")
+        rmapi_url = kraftwerk.value(manifest, "rasenmaeher", "mtls", "base_uri") or cls.rmapi_url
         return cls(
             tak_url=url.rstrip("/"),
             tak_server_name=env["MUMBLERMAPI_TAK_SERVER_NAME"],
-            cn=env["MUMBLERMAPI_TAK_CN"],
-            rmapi_url=env.get("MUMBLERMAPI_RMAPI_URL", cls.rmapi_url),
+            cn=cn,
+            rmapi_url=env.get("MUMBLERMAPI_RMAPI_URL", rmapi_url),
             ca_bundle=Path(env.get("MUMBLERMAPI_CA_BUNDLE", cls.ca_bundle)),
             data_dir=Path(env.get("MUMBLERMAPI_TAK_DIR", cls.data_dir)),
             poll_seconds=float(env.get("MUMBLERMAPI_TAK_POLL_SECONDS", cls.poll_seconds)),

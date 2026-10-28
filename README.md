@@ -69,6 +69,11 @@ every 15 s and logs each change:
 
 ## Configuration
 
+Like every Deploy App product, mumblermapi reads the product manifest the platform mounts at
+`/pvarki/kraftwerk-init.json`: rmapi's Linkerd identity (`rasenmaeher.certcn`) and in-cluster URL
+(`rasenmaeher.mtls.base_uri`), and its own name (`product.dns`), which is its TAK identity's CN. Without a
+manifest the in-cluster defaults apply. The variables below override it.
+
 | Variable | Used by | Meaning |
 |---|---|---|
 | `MURMUR_ICE_SECRET` | agent | Murmur's Ice write secret (required) |
@@ -80,7 +85,8 @@ every 15 s and logs each change:
 | `MUMBLERMAPI_TRAEFIK_IDENTITY`, `MUMBLERMAPI_CA_BUNDLE` | mumblermapi | The edge whose forwarded certificate voice tickets are minted for, and the CAs it must chain to |
 | `AGENT_GATEWAY_CA` | agent | The voice gateway's CA; unset lets no browser in |
 | `MUMBLERMAPI_PROXY_READY_URL`, `MUMBLERMAPI_GATEWAY_READY_URL` | mumblermapi | What the health check asks: this pod's Linkerd proxy, default `http://127.0.0.1:4191/ready`, and the voice gateway's `/readyz`; empty skips that check |
-| `MUMBLERMAPI_TAK_URL`, `MUMBLERMAPI_TAK_SERVER_NAME`, `MUMBLERMAPI_TAK_CN` | mumblermapi | TAK's API, the name on TAK's certificate, our TAK identity's CN; unset leaves `Missions/` empty |
+| `MUMBLERMAPI_TAK_URL`, `MUMBLERMAPI_TAK_SERVER_NAME`, `MUMBLERMAPI_TAK_CN` | mumblermapi | TAK's API, the name on TAK's certificate, our TAK identity's CN (default: the manifest's `product.dns`); unset leaves `Missions/` empty |
+| `MUMBLERMAPI_RMAPI_URL` | mumblermapi | rmapi, for our TAK certificate and TAK rights (default: the manifest's `rasenmaeher.mtls.base_uri`) |
 
 Mission nets need takrmapi's `/api/v1/interop/add` and rmapi calling it without a double slash. Both are
 upstream changes that `VOICE-PLAN.md` tracks.

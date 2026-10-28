@@ -10,7 +10,7 @@ import logging
 import os
 import re
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from datetime import UTC, datetime
@@ -30,6 +30,7 @@ from libpvarki.schemas.generic import OperationResultResponse
 from libpvarki.schemas.product import ProductDescription, ProductHealthCheckResponse, UserCRUDRequest
 from pydantic import BaseModel, ConfigDict, Field
 
+from . import kraftwerk
 from .channels import GUARD, ChannelPlanError, ChannelSpec, load_yaml, parse_plan
 from .health import watch as watch_health
 from .identity import CertVerifier, IdentityError, normalize_callsign
@@ -57,7 +58,7 @@ ADMIN_DESCRIPTIONS = {
 
 
 class Settings(BaseModel):
-    """Where things are and who the peers are; all from the environment"""
+    """Where things are and who the peers are; from the environment and the product manifest"""
 
     database: Path = Path("/data/mumblermapi.db")
     templates_dir: Path = Path("/templates")  # channel plan templates an admin may choose to apply
@@ -74,15 +75,17 @@ class Settings(BaseModel):
     gateway_ready_url: str = "http://voice-gateway.app-mumble.svc.cluster.local:8080/readyz"
 
     @classmethod
-    def from_env(cls) -> Settings:
-        """MUMBLERMAPI_* variables"""
+    def from_env(cls, manifest: Mapping[str, Any] | None = None) -> Settings:
+        """MUMBLERMAPI_* variables, then the product manifest (kraftwerk.py), then the defaults"""
         env = os.environ
+        manifest = kraftwerk.read() if manifest is None else manifest
+        rmapi_identity = kraftwerk.value(manifest, "rasenmaeher", "certcn") or cls().rmapi_identity
         return cls(
             database=Path(env.get("MUMBLERMAPI_DATABASE", cls().database)),
             templates_dir=Path(env.get("MUMBLERMAPI_TEMPLATES_DIR", cls().templates_dir)),
             ui_dir=Path(env.get("MUMBLERMAPI_UI_DIR", cls().ui_dir)),
-            tak=TakSettings.from_env(env),
-            rmapi_identity=env.get("MUMBLERMAPI_RMAPI_IDENTITY", cls().rmapi_identity),
+            tak=TakSettings.from_env(env, manifest),
+            rmapi_identity=env.get("MUMBLERMAPI_RMAPI_IDENTITY", rmapi_identity),
             agent_identity=env.get("MUMBLERMAPI_AGENT_IDENTITY", cls().agent_identity),
             traefik_identity=env.get("MUMBLERMAPI_TRAEFIK_IDENTITY", cls().traefik_identity),
             ca_bundle=Path(env.get("MUMBLERMAPI_CA_BUNDLE", cls().ca_bundle)),
