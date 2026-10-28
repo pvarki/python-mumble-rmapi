@@ -1,7 +1,8 @@
-# mumble
+# python-mumble-rmapi
 
 Voice for the OpenDefence platform: Murmur (Mumble server) with certificate-only authentication, managed
 from the Deploy App. Users come only from Deploy App enrolment; nobody logs in to anything else.
+opendefence-platform deploys it as `k8s/app-mumble`.
 
 One image, three parts:
 
@@ -33,7 +34,9 @@ The design is in `VOICE-PLAN.md` in `markdown-opendefence-pm`.
 
 ## Talking from the browser
 
-Browsers join the same nets through `voice-gateway/` (VOICE-PLAN §4.10), with no extra login:
+Browsers join the same nets through the voice gateway (`pvarki/golang-mumble-voice-gateway`, VOICE-PLAN §4.10),
+with no extra login. The gateway reads the ticket's username and certificate (`tickets.py`), so the two share
+that format:
 
 1. The talk panel POSTs `{"slot": n}` to `/ui/mumble/api/v1/voice/token`. mumblermapi takes the client
    certificate Traefik verified, checks it against the platform CA and its own user record (known, not
