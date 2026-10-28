@@ -20,7 +20,7 @@ from .conftest import NOW, Pki, issue
     ],
 )
 def test_parse_username(raw: str, expected: Username) -> None:
-    """Vx/XVoice usernames and bare callsigns parse"""
+    """ODVoice/Vx usernames and bare callsigns parse"""
     assert parse_username(raw) == expected
 
 

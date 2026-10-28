@@ -1,6 +1,6 @@
 [project]
 name = "mumblermapi"
-version = "1.0.0+261028"
+version = "1.0.1+261028"
 description = "Murmur (Mumble server) integration for the OpenDefence platform"
 license = { text = "GPL-2.0-only" }
 readme = "README.md"

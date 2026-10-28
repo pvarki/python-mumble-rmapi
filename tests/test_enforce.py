@@ -110,7 +110,7 @@ def test_mission_shadows() -> None:
         *CHANNELS,
         ExistingChannel(8, 0, "Missions"),
         ExistingChannel(9, 8, "RECON"),
-        ExistingChannel(10, 0, "RECON", temporary=True),  # XVoice's stand-in
+        ExistingChannel(10, 0, "RECON", temporary=True),  # a client's stand-in
         ExistingChannel(11, 9, "RECON", temporary=True),  # inside the gated net: fine
         ExistingChannel(12, 0, "OTHER", temporary=True),
     ]

@@ -34,7 +34,7 @@ def ids_fixture(tmp_path: Path) -> UserIds:
 
 
 def murmur() -> FakeServer:
-    """A server with a stale unit net, XVoice's stand-in for the RECON mission net, and four users"""
+    """A server with a stale unit net, a client's stand-in for the RECON mission net, and four users"""
     server = FakeServer()
     server.channel(1, 0, "Units")
     server.channel(2, 1, "20")
@@ -60,7 +60,7 @@ def test_enforce_pass(ids: UserIds) -> None:
     # Guard is a mission net open to everyone: no rules of its own, and nobody is moved out of it
     guard = server.id_of("/Missions/Guard")
     assert acl_of(*server.getACL(guard)) == OPEN
-    # The subscriber goes from XVoice's stand-in to the real net, the outsider to the root
+    # The subscriber goes from the stand-in to the real net, the outsider to the root
     assert server.users[2].channel == mission and server.users[4].channel == 0
 
     server.users[4].channel = platoon  # entered before the net was restricted
