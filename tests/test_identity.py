@@ -1,5 +1,6 @@
 """Usernames, certificate verification and name binding"""
 
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -70,7 +71,7 @@ def test_verify_rejects_foreign_ca(pki: Pki) -> None:
 
 def test_verify_rejects_expired(pki: Pki) -> None:
     """Expired certificates are refused"""
-    expired = issue("ALPHA 1", pki.ca, not_before=NOW.replace(year=2025), not_after=NOW.replace(year=2026, month=1))
+    expired = issue("ALPHA 1", pki.ca, not_before=NOW - timedelta(days=400), not_after=NOW - timedelta(days=30))
     with pytest.raises(IdentityError, match="untrusted"):
         _verifier(pki).verify([expired.der], NOW)
 
