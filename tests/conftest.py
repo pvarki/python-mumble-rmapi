@@ -12,7 +12,8 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
-NOW = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
+# Today, so certificates the code checks against the real clock are valid when the tests run
+NOW = datetime.now(UTC).replace(microsecond=0)
 
 
 @dataclass(frozen=True)
