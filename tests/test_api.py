@@ -167,7 +167,7 @@ def test_v2_descriptions(client: TestClient) -> None:
     tile = client.get("/api/v2/description/fi").json()
     assert tile["title"] == "Puhe"
     assert tile["component"] == {"type": "component", "ref": "/ui/mumble/remoteEntry.js"}
-    assert tile["icon"] == "ui/mumble/icon.svg"
+    assert tile["icon"] == "ui/mumble/voicelogo.svg"
     assert client.get("/api/v2/description/de").json()["language"] == "en"
     assert "members" in client.get("/api/v2/admin/description/en").json()["description"]
     remote = client.get("/ui/mumble/remoteEntry.js")

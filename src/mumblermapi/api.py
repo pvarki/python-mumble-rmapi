@@ -563,7 +563,7 @@ def _extended(language: str, texts: dict[str, str]) -> ProductDescriptionExtende
     return ProductDescriptionExtended(
         shortname=SHORTNAME,
         title=TITLES[language],
-        icon=f"{UI_PATH[1:]}/icon.svg",
+        icon=f"{UI_PATH[1:]}/voicelogo.svg",
         description=texts[language],
         language=language,
         docs=None,
