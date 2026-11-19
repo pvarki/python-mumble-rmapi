@@ -15,6 +15,10 @@ class MemoryLimitException(IceException):
     """Ice's: a message is over Ice.MessageSizeMax"""
 
 
+class UnknownUserException(IceException):
+    """Ice's: the servant raised an exception its operation does not declare"""
+
+
 class InvalidSessionException(IceException):
     """Murmur's: the session is gone"""
 
@@ -64,6 +68,7 @@ class Group(SimpleNamespace):
 ICE = ModuleType("Ice")
 ICE.Exception = IceException  # type: ignore[attr-defined]
 ICE.MemoryLimitException = MemoryLimitException  # type: ignore[attr-defined]
+ICE.UnknownUserException = UnknownUserException  # type: ignore[attr-defined]
 MUMBLE = ModuleType("MumbleServer")
 MUMBLE.InvalidSessionException = InvalidSessionException  # type: ignore[attr-defined]
 MUMBLE.InvalidChannelException = InvalidChannelException  # type: ignore[attr-defined]
@@ -187,10 +192,12 @@ class FakeServer:
 
     def getListeningUsers(self, channel_id: int) -> list[int]:
         if channel_id not in self.channels:
-            raise InvalidChannelException()
+            raise UnknownUserException()  # Murmur's InvalidChannelException, which the slice does not declare
         return list(self.listeners.get(channel_id, []))
 
     def stopListening(self, session: int, channel_id: int) -> None:
+        if session not in self.users or channel_id not in self.channels:
+            raise UnknownUserException()  # as in getListeningUsers
         self.listeners[channel_id].remove(session)
         self.log.append(f"unlisten {session} {channel_id}")
 

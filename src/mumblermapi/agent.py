@@ -184,7 +184,7 @@ def _sessions(server: Any) -> list[Session]:
     return [Session(session, user.name, user.channel) for session, user in server.getUsers().items()]
 
 
-def _enforce(mumble: ModuleType, server: Any, policy: Policy, ids: UserIds, units: bool) -> list[str]:
+def _enforce(ice: ModuleType, mumble: ModuleType, server: Any, policy: Policy, ids: UserIds, units: bool) -> list[str]:
     """Make Murmur match the policy, and return the paths of nets Murmur refused to create. Until the policy is
     known, Units/ and Missions/ are left as they are.
 
@@ -235,9 +235,11 @@ def _enforce(mumble: ModuleType, server: Any, policy: Policy, ids: UserIds, unit
     # Read again: anyone who entered a net before its rules were written is still inside, and reconcile may
     # have moved people
     remaining = [s for s in _sessions(server) if s.session not in kicked]
+    # Murmur's slice declares no exceptions for the listener calls, so Ice reports a session or channel that is
+    # gone as an unknown one
     listeners = {}
     for channel_id in access.admitted:
-        with _may_be_gone(mumble):
+        with _may_be_gone(mumble, ice.UnknownUserException):
             listeners[channel_id] = server.getListeningUsers(channel_id)
     actions = violations(access, remaining, listeners, shadows(existing, roots["Missions"]))
     for session, target in actions.move:
@@ -247,7 +249,7 @@ def _enforce(mumble: ModuleType, server: Any, policy: Policy, ids: UserIds, unit
             state.channel = target
             server.setState(state)
     for session, channel_id in actions.unlisten:
-        with _may_be_gone(mumble):
+        with _may_be_gone(mumble, ice.UnknownUserException):
             LOGGER.info("Stopping session %d listening to channel %d", session, channel_id)
             server.stopListening(session, channel_id)
     return left_out
@@ -268,10 +270,10 @@ def _presence(mumble: ModuleType, server: Any) -> list[Entry]:
 
 
 @contextmanager
-def _may_be_gone(mumble: ModuleType) -> Iterator[None]:
+def _may_be_gone(mumble: ModuleType, *also: type[Exception]) -> Iterator[None]:
     try:
         yield
-    except (mumble.InvalidSessionException, mumble.InvalidChannelException):
+    except (mumble.InvalidSessionException, mumble.InvalidChannelException, *also):
         pass  # the user left, or the temporary channel emptied, meanwhile
 
 
@@ -317,7 +319,7 @@ class Rounds:
             else:
                 self.next_sweep = time.monotonic() + self.sweep_seconds
         try:
-            left_out = _enforce(self.mumble, server, policy, self.ids, units)
+            left_out = _enforce(self.ice, self.mumble, server, policy, self.ids, units)
             if self.reporter:
                 self.reporter.report(_presence(self.mumble, server), time.monotonic())
         except not_ready as exc:
