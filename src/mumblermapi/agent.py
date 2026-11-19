@@ -219,7 +219,12 @@ def _enforce(ice: ModuleType, mumble: ModuleType, server: Any, policy: Policy, i
     )
     for channel_id, acl in access.acls.items():
         with _may_be_gone(mumble):
-            if acl_of(*server.getACL(channel_id)) != acl:
+            try:
+                current: Acl | None = acl_of(*server.getACL(channel_id))
+            except ice.MemoryLimitException:
+                # Rules too large to read, such as a member's own in their temporary channel: ours replace them
+                current = None
+            if current != acl:
                 _set_acl(mumble, server, channel_id, acl)
                 LOGGER.info("Set access rules of channel %d", channel_id)
     # A link carries a restricted net's audio to whoever is in the other channel, and one made while its maker

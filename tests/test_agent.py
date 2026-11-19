@@ -457,6 +457,32 @@ def test_nets_that_emptied_meanwhile(ids: UserIds) -> None:
     assert server.log == ["move 4 0"]
 
 
+def test_rules_too_large_to_read_are_replaced(ids: UserIds) -> None:
+    """A member's own rules in their temporary channel, past Ice's limit, are overwritten; the pass goes on"""
+    server = murmur()
+    agent._enforce(ICE, MUMBLE, server, POLICY, ids, units=True)
+    platoon = server.id_of("/Units/10")
+    server.channel(99, platoon, "huddle", temporary=True)
+    server.acls[99] = ([], [MUMBLE.Group("x" * 100, False, True, True, [], [], [])], True)
+    server.users[4].channel = platoon  # an outsider, to be moved out after the rules are written
+    real = server.getACL
+
+    def limited(channel_id: int) -> tuple[list[Any], list[Any], bool]:
+        acls = real(channel_id)
+        if any(len(group.name) > 50 for group in acls[1]):
+            raise MemoryLimitException()
+        return acls
+
+    server.getACL = limited  # type: ignore[method-assign]
+    server.log.clear()
+    agent._enforce(ICE, MUMBLE, server, POLICY, ids, units=True)
+    assert "acl 99" in server.log and server.users[4].channel == 0
+
+    server.log.clear()
+    agent._enforce(ICE, MUMBLE, server, POLICY, ids, units=True)
+    assert server.log == []
+
+
 def test_listener_calls_end_the_pass_on_other_errors(ids: UserIds) -> None:
     """Only "gone" is taken as gone"""
 
