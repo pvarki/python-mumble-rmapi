@@ -336,6 +336,30 @@ def test_a_round_names_oversized_answers(ids: UserIds, caplog: pytest.LogCapture
     ]
 
 
+def test_an_unexpected_error_ends_no_round(
+    ids: UserIds, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The agent stays up, with Murmur's authenticator; a failed sweep holds up nothing, a failed plan stops
+    presence"""
+
+    def broken(*args: object) -> Any:
+        raise KeyError("a bug")
+
+    monkeypatch.setattr(agent, "_sweep", broken)
+    reports: list[object] = []
+    loop = rounds(ids, reports)
+    with caplog.at_level(logging.ERROR, logger=agent.__name__):
+        loop.round(murmur(), POLICY, units=True)
+        monkeypatch.setattr(agent, "_enforce", broken)
+        loop.round(murmur(), POLICY, units=True)
+    assert len(reports) == 1 and loop.next_sweep == 0
+    assert [(r.getMessage(), bool(r.exc_info)) for r in caplog.records] == [
+        ("Unexpected error in the certificate sweep", True),
+        ("Unexpected error in the certificate sweep", True),
+        ("Unexpected error in the plan", True),
+    ]
+
+
 def test_a_round_warns_about_refused_nets(ids: UserIds, caplog: pytest.LogCaptureFixture) -> None:
     """Once, not every round"""
     server = murmur()

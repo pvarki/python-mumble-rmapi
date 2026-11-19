@@ -308,7 +308,8 @@ class Rounds:
 
         The sweep goes first, on its own, so that no lasting failure to enforce the policy stops disconnecting
         revoked certificates. Presence follows enforcement, so a pass that keeps failing stops the reports and
-        mumblermapi's health shows it.
+        mumblermapi's health shows it. No error ends the agent: Murmur's authenticator, and so every login, would
+        go with it.
         """
         not_ready = (self.ice.Exception, RuntimeError)
         if time.monotonic() >= self.next_sweep:
@@ -316,6 +317,8 @@ class Rounds:
                 _sweep(self.mumble, server, self.auth)
             except not_ready as exc:
                 self._failed("the certificate sweep", exc)
+            except Exception:
+                LOGGER.exception("Unexpected error in the certificate sweep")
             else:
                 self.next_sweep = time.monotonic() + self.sweep_seconds
         try:
@@ -324,6 +327,8 @@ class Rounds:
                 self.reporter.report(_presence(self.mumble, server), time.monotonic())
         except not_ready as exc:
             self._failed("the plan", exc)
+        except Exception:
+            LOGGER.exception("Unexpected error in the plan")
         else:
             self.left_out = _warn_left_out(left_out, self.left_out)
 

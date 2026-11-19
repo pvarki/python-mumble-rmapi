@@ -103,6 +103,8 @@ def test_source_polls_with_etag_and_survives_outages() -> None:
         http.client.IncompleteRead(b"{"),
         (500, b""),
         (200, b"junk"),
+        (200, b"[" * 100_000),  # nested past Python's recursion limit
+        (200, b'{"version": 1e400}'),  # no int
         (200, b"{}"),
         (200, body),
     )
@@ -112,7 +114,7 @@ def test_source_polls_with_etag_and_survives_outages() -> None:
     assert source.ready
     assert source.policy.version == 7
     assert get.headers[0] == {}
-    for _ in range(6):
+    for _ in range(8):
         assert source.refresh() is False
     assert get.headers[1] == {"If-None-Match": "7"}
     assert source.refresh() is False  # same document again

@@ -148,8 +148,11 @@ class PolicySource:
                 raise ValueError(f"HTTP {status}")
             data = json.loads(body)
             policy = parse_state(data)
-        except (OSError, http.client.HTTPException, ValueError, TypeError, KeyError) as exc:
+        except (OSError, http.client.HTTPException, ValueError, TypeError, KeyError, RecursionError) as exc:
             LOGGER.warning("Keeping policy version %d, none newer from mumblermapi: %s", self.policy.version, exc)
+            return False
+        except Exception:
+            LOGGER.exception("Keeping policy version %d, mumblermapi's state makes no sense", self.policy.version)
             return False
         # The ETag also follows mumblermapi's ticket key; older mumblermapis send the version alone
         self._etag = str(data.get("etag", policy.version))
