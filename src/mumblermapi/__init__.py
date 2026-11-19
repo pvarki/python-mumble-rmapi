@@ -1,3 +1,3 @@
 """Murmur integration for the OpenDefence platform"""
 
-__version__ = "1.0.3+261117"
+__version__ = "1.0.4+261119"
