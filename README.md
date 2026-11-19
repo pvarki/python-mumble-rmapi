@@ -38,10 +38,13 @@ Browsers join the same nets through the voice gateway (`pvarki/golang-mumble-voi
 with no extra login. The gateway reads the ticket's username and certificate (`tickets.py`), so the two share
 that format:
 
-1. The talk panel POSTs `{"slot": n}` to `/ui/mumble/api/v1/voice/token`. mumblermapi takes the client
-   certificate Traefik verified, checks it against the platform CA and its own user record (known, not
-   revoked, voice on), and signs a 60-second Ed25519 ticket for `<callsign>---web-<n>` that carries that
-   certificate. The signing key lives in memory only; murmur-agent gets the public key with its state.
+1. The talk panel POSTs `{"browser": id}` to `/ui/mumble/api/v1/voice/token`, where `id` is a random id the
+   browser keeps. mumblermapi takes the client certificate Traefik verified, checks it against the platform CA
+   and its own user record (known, not revoked, voice on), and signs a 60-second Ed25519 ticket for
+   `<callsign>---web-<n>` that carries that certificate. Each of the callsign's browsers keeps its own slot `n`
+   of 1 to 9, as Murmur drops the older of two sessions with one name; a tenth browser takes the slot used
+   longest ago. Tabs of one browser share its slot, so a new tab takes over. The signing key lives in memory
+   only; murmur-agent gets the public key with its state.
 2. The panel opens `wss://mtls.<domain>/ui/mumble/ws` and sends the ticket. The gateway checks it carries
    the connection's own certificate, then logs in to Murmur with its own certificate and the ticket as the
    password.

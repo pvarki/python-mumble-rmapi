@@ -69,12 +69,12 @@ class Stop extends Error {
   }
 }
 
-async function fetchTicket(slot: number): Promise<string> {
+async function fetchTicket(browser: string): Promise<string> {
   const response = await fetch(TOKEN_URL, {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ slot }),
+    body: JSON.stringify({ browser }),
   });
   if (response.status === 404) throw new Stop("unknown");
   if (response.status === 403) throw new Stop("refused");
@@ -111,7 +111,7 @@ export class VoiceClient {
   }
 
   // Must be called from a click: browsers unlock audio only inside a user gesture.
-  async connect(slot: number): Promise<void> {
+  async connect(browser: string): Promise<void> {
     if (this.snapshot.phase !== "idle") return;
     const generation = ++this.generation;
     this.set({ ...IDLE, phase: "connecting" });
@@ -133,7 +133,7 @@ export class VoiceClient {
       }
       this.mic = mic;
       this.speakers = new Speakers(ctx);
-      const ticket = await fetchTicket(slot);
+      const ticket = await fetchTicket(browser);
       if (generation !== this.generation) return;
       this.open(ticket, generation);
     } catch (e) {
