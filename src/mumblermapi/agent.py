@@ -11,7 +11,7 @@ import logging
 import signal
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from importlib.resources import files
@@ -20,7 +20,7 @@ from typing import Any
 
 from libpvarki.logging import add_trace_and_audit, init_logging
 
-from .authenticator import Authenticator
+from .authenticator import TRY_LATER, UNKNOWN, Authenticator
 from .channels import ChannelRefused, ExistingChannel, desired_tree, load_plan, prune, reconcile
 from .config import AgentConfig
 from .enforce import Acl, Session, acl_of, combine, plan, refused, shadows, violations
@@ -44,6 +44,16 @@ def _load_ice() -> tuple[ModuleType, ModuleType]:  # pragma: no cover  # needs t
     return Ice, MumbleServer
 
 
+def _answer[T](call: Callable[[], T], fallback: T) -> T:
+    """call's answer, or fallback when it raises. Murmur removes an authenticator that fails a call, and every
+    login then needs the server password, which nobody is given."""
+    try:
+        return call()
+    except Exception:
+        LOGGER.exception("A check for Murmur failed, so it is answered %r", fallback)
+        return fallback
+
+
 def _servant(mumble: ModuleType, auth: Authenticator) -> Any:
     """A ServerAuthenticator that delegates to the Ice-free Authenticator"""
 
@@ -62,20 +72,21 @@ def _servant(mumble: ModuleType, auth: Authenticator) -> Any:
             # The password is a credential only from the voice gateway, where it is a mumblermapi ticket. certstrong
             # is Murmur's notion of trust, not ours.
             del certhash, certstrong, current
-            return auth.authenticate(name, [bytes(cert) for cert in certificates], pw), "", []
+            user_id = _answer(lambda: auth.authenticate(name, [bytes(cert) for cert in certificates], pw), TRY_LATER)
+            return user_id, "", []
 
         def getInfo(self, id: int, current: Any = None) -> tuple[bool, dict[Any, str]]:
             del current
-            name = auth.id_to_name(id)
+            name = _answer(lambda: auth.id_to_name(id), "")
             return (True, {mumble.UserInfo.UserName: name}) if name else (False, {})
 
         def nameToId(self, name: str, current: Any = None) -> int:
             del current
-            return auth.name_to_id(name)
+            return _answer(lambda: auth.name_to_id(name), UNKNOWN)
 
         def idToName(self, id: int, current: Any = None) -> str:
             del current
-            return auth.id_to_name(id)
+            return _answer(lambda: auth.id_to_name(id), "")
 
         def idToTexture(self, id: int, current: Any = None) -> bytes:
             del id, current

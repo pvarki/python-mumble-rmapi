@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 
 from mumblermapi import agent
-from mumblermapi.authenticator import Refusal
+from mumblermapi.authenticator import TRY_LATER, UNKNOWN, Refusal
 from mumblermapi.channels import MAX_DEPTH
 from mumblermapi.enforce import OPEN, acl_of, members_only
 from mumblermapi.policy import Policy, Unit
@@ -334,6 +334,31 @@ def test_servant() -> None:
     assert servant.getInfo(8) == (False, {})
     assert servant.nameToId("VOICE1---a") == 7 and servant.idToName(7) == "VOICE1---a"
     assert servant.idToTexture(7) == b""
+
+
+class BrokenAuth:
+    """Every check fails, as with a full disk, a responder answering garbage, or a bug"""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    def __getattr__(self, name: str) -> Any:
+        def broken(*args: object) -> Any:
+            raise self.error
+
+        return broken
+
+
+@pytest.mark.parametrize("error", [OSError("no space left on device"), ValueError("garbage"), KeyError("a bug")])
+def test_servant_answers_when_a_check_fails(caplog: pytest.LogCaptureFixture, error: Exception) -> None:
+    """A failing check is a "try later" or "unknown" answer, never an error, which would make Murmur drop the
+    authenticator and refuse every login"""
+    servant = agent._servant(MUMBLE, BrokenAuth(error))  # type: ignore[arg-type]
+    with caplog.at_level(logging.ERROR, logger=agent.__name__):
+        assert servant.authenticate("VOICE1---a", "", [b"cert"], "hash", True) == (TRY_LATER, "", [])
+        assert servant.getInfo(7) == (False, {})
+        assert servant.nameToId("VOICE1---a") == UNKNOWN and servant.idToName(7) == ""
+    assert len(caplog.records) == 4 and all(r.exc_info for r in caplog.records)
 
 
 def test_channel_description() -> None:
