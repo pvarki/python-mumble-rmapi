@@ -1,4 +1,5 @@
-"""mumblermapi's state: users from rmapi, the Units/ channel tree and its members, and TAK missions"""
+"""mumblermapi's state: users from rmapi, the Units/ channel tree and its members, TAK missions and the web
+voice slot each browser holds"""
 
 from __future__ import annotations
 
@@ -7,7 +8,8 @@ import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .channels import ACCESS, GUARD, ChannelSpec
+from .channels import ACCESS, GUARD, MAX_DEPTH, ChannelSpec
+from .tickets import WEB_SLOTS
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -37,6 +39,15 @@ CREATE TABLE IF NOT EXISTS mission_members (
     callsign TEXT NOT NULL,
     PRIMARY KEY (mission, callsign)
 );
+-- Which web slot each of a callsign's browsers logs in with, so two browsers never share one
+CREATE TABLE IF NOT EXISTS web_slots (
+    callsign TEXT NOT NULL,  -- as in the Mumble username
+    browser TEXT NOT NULL,  -- the id the browser keeps for itself
+    slot INTEGER NOT NULL,
+    used_at REAL NOT NULL,  -- wall-clock seconds of the last ticket
+    PRIMARY KEY (callsign, browser),
+    UNIQUE (callsign, slot)
+);
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value INTEGER NOT NULL);
 INSERT OR IGNORE INTO meta (key, value) VALUES ('version', 1);
 """
@@ -55,6 +66,14 @@ class StoreError(ValueError):
 
 class NoSuchChannel(StoreError):
     """The channel does not exist"""
+
+
+class ChannelExists(StoreError):
+    """A channel of that name is already there"""
+
+
+class TooDeep(StoreError):
+    """The channel would nest deeper than Murmur takes"""
 
 
 @dataclass(frozen=True)
@@ -123,6 +142,16 @@ class Store:
     def _bump(self) -> None:
         self._db.execute("UPDATE meta SET value = value + 1 WHERE key = 'version'")
 
+    def _depth(self, channel_id: int) -> int:
+        """How deep a channel is: 1 at the top of Units/, counted no further than MAX_DEPTH"""
+        row = self._db.execute(
+            "WITH RECURSIVE up(id, depth) AS (SELECT ?, 0 UNION ALL"
+            " SELECT c.parent, up.depth + 1 FROM channels c JOIN up ON c.id = up.id WHERE up.depth < ?)"
+            " SELECT MAX(depth) FROM up",
+            (channel_id, MAX_DEPTH),
+        ).fetchone()
+        return int(row[0])
+
     # ---- users
     def upsert_user(self, callsign: str, uuid: str) -> None:
         """A user was created or updated in rmapi"""
@@ -156,19 +185,22 @@ class Store:
 
     # ---- channels
     def add_channel(self, name: str, description: str = "", parent: int = 0, access: str | None = None) -> int:
-        """Create a channel under Units/ (parent 0) or under another channel. By default a top-level net is open
-        and a sub-net follows its parent."""
+        """Create a channel under Units/ (parent 0) or under another channel, at most MAX_DEPTH deep. By default
+        a top-level net is open and a sub-net follows its parent."""
         access = self._access(access, parent)
         with self._lock, self._db:
             if parent and not self._db.execute("SELECT 1 FROM channels WHERE id = ?", (parent,)).fetchone():
                 raise NoSuchChannel(f"no channel {parent}")
+            # Murmur refuses a channel past its nesting limit, and the agent would leave the net out
+            if parent and self._depth(parent) >= MAX_DEPTH:
+                raise TooDeep(f"nets nest at most {MAX_DEPTH} deep")
             try:
                 cur = self._db.execute(
                     "INSERT INTO channels (parent, name, description, access) VALUES (?, ?, ?, ?)",
                     (parent, name, description, access),
                 )
             except sqlite3.IntegrityError as exc:
-                raise StoreError(f"channel {name!r} already exists there") from exc
+                raise ChannelExists(f"channel {name!r} already exists there") from exc
             self._bump()
             return int(cur.lastrowid or 0)
 
@@ -211,7 +243,7 @@ class Store:
                     ),
                 )
             except sqlite3.IntegrityError as exc:
-                raise StoreError(f"channel {name!r} already exists there") from exc
+                raise ChannelExists(f"channel {name!r} already exists there") from exc
             self._bump()
 
     def clear(self) -> int:
@@ -267,7 +299,7 @@ class Store:
                             [(channel_id, callsign) for callsign in spec.members],
                         )
                         self._bump()
-            except StoreError:
+            except ChannelExists:
                 with self._lock:
                     row = self._db.execute(
                         "SELECT id FROM channels WHERE parent = ? AND name = ?", (parent, spec.name)
@@ -305,3 +337,33 @@ class Store:
         """No channels yet"""
         with self._lock:
             return bool(self._db.execute("SELECT COUNT(*) FROM channels").fetchone()[0] == 0)
+
+    # ---- web voice slots
+    def web_slot(self, callsign: str, browser: str, now: float) -> int:
+        """The web slot this browser of the callsign logs in with: the one it had, else the lowest free one.
+        Murmur drops the older of two sessions with one name, so two browsers must not share a slot. No new
+        version: nothing murmur-agent enforces changes."""
+        with self._lock, self._db:
+            row = self._db.execute(
+                "SELECT slot FROM web_slots WHERE callsign = ? AND browser = ?", (callsign, browser)
+            ).fetchone()
+            if row:
+                self._db.execute(
+                    "UPDATE web_slots SET used_at = ? WHERE callsign = ? AND browser = ?", (now, callsign, browser)
+                )
+                return int(row[0])
+            taken = {r[0] for r in self._db.execute("SELECT slot FROM web_slots WHERE callsign = ?", (callsign,))}
+            slot = next((s for s in WEB_SLOTS if s not in taken), None)
+            if slot is None:
+                # ponytail: a new browser takes the slot minted longest ago even if that browser is still in voice,
+                # which drops it; skipping slots presence reports online would fix that
+                oldest = self._db.execute(
+                    "SELECT slot FROM web_slots WHERE callsign = ? ORDER BY used_at, slot LIMIT 1", (callsign,)
+                ).fetchone()
+                slot = int(oldest[0])
+            # REPLACE drops the row of the browser that held a taken-over slot
+            self._db.execute(
+                "INSERT OR REPLACE INTO web_slots (callsign, browser, slot, used_at) VALUES (?, ?, ?, ?)",
+                (callsign, browser, slot, now),
+            )
+            return slot

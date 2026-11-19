@@ -78,10 +78,18 @@ class TakSettings:
         return self.data_dir / "tak.key"
 
 
+def _entries(doc: Any) -> list[dict[str, Any]]:
+    """The objects in a TAK answer's data list; raises TypeError for any other shape"""
+    data = doc.get("data", []) if isinstance(doc, dict) else None
+    if not isinstance(data, list):
+        raise TypeError("TAK's answer has no data list")
+    return [entry for entry in data if isinstance(entry, dict)]
+
+
 def mission_names(doc: Any) -> list[str]:
     """Names from GET /Marti/api/missions that can be Murmur channel names"""
     names = []
-    for mission in doc.get("data", []):
+    for mission in _entries(doc):
         name = str(mission.get("name", ""))
         if NAME_RE.fullmatch(name):
             names.append(name)
@@ -92,7 +100,7 @@ def mission_names(doc: Any) -> list[str]:
 
 def subscribers(doc: Any) -> frozenset[str]:
     """Callsigns from GET /Marti/api/missions/{name}/subscriptions/roles"""
-    return frozenset(str(sub["username"]) for sub in doc.get("data", []) if sub.get("username"))
+    return frozenset(str(sub["username"]) for sub in _entries(doc) if sub.get("username"))
 
 
 def needs_enrolment(cert: Path, now: datetime) -> bool:
@@ -146,9 +154,13 @@ def tls_context(settings: TakSettings) -> ssl.SSLContext:
 
 
 async def read_missions(
-    session: aiohttp.ClientSession, settings: TakSettings, context: ssl.SSLContext | bool
+    session: aiohttp.ClientSession,
+    settings: TakSettings,
+    context: ssl.SSLContext | bool,
+    known: Mapping[str, frozenset[str]],
 ) -> dict[str, frozenset[str]]:
-    """Every mission we can see, with its subscribers' callsigns"""
+    """Every mission we can see, with its subscribers' callsigns. A mission whose subscribers cannot be read
+    now keeps those in known, as the last read."""
 
     async def get(path: str) -> Any:
         # TAK is reached by its service name but its certificate carries the public name.
@@ -167,6 +179,10 @@ async def read_missions(
         except aiohttp.ClientResponseError as exc:
             # Password-protected missions, or one deleted meanwhile: no net
             LOGGER.info("No subscribers for mission %r: HTTP %d", name, exc.status)
+        except (aiohttp.ClientError, ValueError, TypeError, RecursionError, TimeoutError) as exc:
+            LOGGER.warning("Keeping the last known subscribers of mission %r: %r", name, exc)
+            if name in known:
+                missions[name] = known[name]
     return missions
 
 
@@ -178,10 +194,12 @@ async def watch(store: Store, settings: TakSettings, stop: asyncio.Event) -> Non
                 if needs_enrolment(settings.cert, datetime.now(UTC)):
                     await enrol(session, settings)
                     LOGGER.info("Registered with TAK as %s", settings.cn)
-                missions = await read_missions(session, settings, tls_context(settings))
+                missions = await read_missions(session, settings, tls_context(settings), store.missions())
                 if store.set_missions(missions):
                     LOGGER.info("Mission nets: %s", ", ".join(sorted(store.missions())) or "none")
-            except (aiohttp.ClientError, OSError, ValueError, KeyError, RuntimeError, TimeoutError) as exc:
+            except (aiohttp.ClientError, OSError, ValueError, TypeError, KeyError, RuntimeError, TimeoutError) as exc:
                 LOGGER.warning("Keeping the last known missions: %r", exc)  # a timeout's str() is empty
+            except Exception:
+                LOGGER.exception("Keeping the last known missions")  # the watcher must not end
             with contextlib.suppress(TimeoutError):
                 await asyncio.wait_for(stop.wait(), settings.poll_seconds)

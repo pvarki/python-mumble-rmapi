@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import io
 import json
 import urllib.error
@@ -10,7 +11,7 @@ import urllib.request
 import pytest
 
 from mumblermapi.channels import GUARD, ChannelSpec
-from mumblermapi.policy import Policy, PolicySource, Unit, from_plan, http_get, parse_state
+from mumblermapi.policy import MAX_STATE_BYTES, Policy, PolicySource, Unit, from_plan, http_get, parse_state
 
 STATE = {
     "version": 7,
@@ -95,14 +96,25 @@ class FakeGet:
 def test_source_polls_with_etag_and_survives_outages() -> None:
     """A change is reported once; 304s, errors and garbage keep the last good policy"""
     body = json.dumps(STATE).encode()
-    get = FakeGet((200, body), (304, b""), OSError("down"), (500, b""), (200, b"junk"), (200, b"{}"), (200, body))
+    get = FakeGet(
+        (200, body),
+        (304, b""),
+        OSError("down"),
+        http.client.IncompleteRead(b"{"),
+        (500, b""),
+        (200, b"junk"),
+        (200, b"[" * 100_000),  # nested past Python's recursion limit
+        (200, b'{"version": 1e400}'),  # no int
+        (200, b"{}"),
+        (200, body),
+    )
     source = PolicySource(url="http://mumblermapi/api/v1/agent/state", policy=Policy(), get=get)
     assert not source.ready
     assert source.refresh() is True
     assert source.ready
     assert source.policy.version == 7
     assert get.headers[0] == {}
-    for _ in range(5):
+    for _ in range(8):
         assert source.refresh() is False
     assert get.headers[1] == {"If-None-Match": "7"}
     assert source.refresh() is False  # same document again
@@ -125,6 +137,12 @@ def test_http_get(monkeypatch: pytest.MonkeyPatch) -> None:
     assert http_get("http://x/state", {"If-None-Match": "7"}, 1.0) == (304, b"")
     with pytest.raises(ValueError):
         http_get("file:///etc/passwd", {}, 1.0)
+    # Cut short, it would be read as garbage; the log says what it is
+    monkeypatch.setattr(urllib.request, "urlopen", lambda request, timeout: _Resp(b" " * (MAX_STATE_BYTES + 1)))
+    with pytest.raises(ValueError, match="over"):
+        http_get("http://x/state", {}, 1.0)
+    monkeypatch.setattr(urllib.request, "urlopen", lambda request, timeout: _Resp(b" " * MAX_STATE_BYTES))
+    assert len(http_get("http://x/state", {}, 1.0)[1]) == MAX_STATE_BYTES
 
 
 def test_unit_defaults() -> None:

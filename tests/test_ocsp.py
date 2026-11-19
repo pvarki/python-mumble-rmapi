@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import io
 import urllib.request
 from datetime import timedelta
@@ -9,11 +10,13 @@ from typing import Any
 
 import pytest
 from cryptography import x509
+from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import ocsp
 from cryptography.x509.oid import AuthorityInformationAccessOID, ExtendedKeyUsageOID
 
+from mumblermapi import ocsp as ocsp_module
 from mumblermapi.identity import Identity
 from mumblermapi.ocsp import OcspChecker, OcspUnavailable, http_post, responder_url
 
@@ -137,6 +140,38 @@ def test_unreachable_keeps_known_good(pki: Pki) -> None:
     clock.now += 301
     assert checker.is_revoked(_identity(pki), NOW) is False
     assert len(fetch.requests) == 2
+
+
+def test_a_failed_responder_is_left_alone_a_while(pki: Pki) -> None:
+    """During an outage, one timeout per retry period, not one per certificate; known-good stays good meanwhile"""
+    bravo = issue("BRAVO 2", pki.ca)
+    fetch = FakeFetch(_response(pki), OcspUnavailable("down"), _response(pki, leaf=bravo))
+    clock = FakeClock()
+    checker = _checker(fetch, clock)
+    assert checker.is_revoked(_identity(pki), NOW) is False
+    clock.now += 301
+    assert checker.is_revoked(_identity(pki), NOW) is False  # asks, fails
+    assert checker.is_revoked(_identity(pki), NOW) is False  # does not ask
+    with pytest.raises(OcspUnavailable, match="moments ago"):
+        checker.is_revoked(_identity(pki, bravo), NOW)
+    assert len(fetch.requests) == 2
+    clock.now += 10
+    assert checker.is_revoked(_identity(pki, bravo), NOW) is False
+    assert len(fetch.requests) == 3
+
+
+@pytest.mark.parametrize(
+    "error", [UnsupportedAlgorithm("signature algorithm"), ValueError("bad extension"), TypeError("bad key")]
+)
+def test_undecodable_response(pki: Pki, monkeypatch: pytest.MonkeyPatch, error: Exception) -> None:
+    """A response cryptography cannot fully read, such as one signed with an unknown algorithm, is no answer"""
+
+    def unknown(*args: object) -> None:
+        raise error
+
+    monkeypatch.setattr(ocsp_module, "_verify_signature", unknown)
+    with pytest.raises(OcspUnavailable, match="undecodable"):
+        _checker(FakeFetch(_response(pki))).is_revoked(_identity(pki), NOW)
 
 
 def test_delegated_responder(pki: Pki) -> None:
@@ -295,6 +330,13 @@ def test_http_post(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(urllib.request, "urlopen", refuse)
     with pytest.raises(OcspUnavailable, match="unreachable"):
+        http_post(URL, b"q", 1.0)
+
+    def garble(request: urllib.request.Request, timeout: float) -> _FakeHttpResponse:
+        raise http.client.BadStatusLine("junk")
+
+    monkeypatch.setattr(urllib.request, "urlopen", garble)
+    with pytest.raises(OcspUnavailable, match="BadStatusLine"):
         http_post(URL, b"q", 1.0)
 
     with pytest.raises(OcspUnavailable, match="refusing"):

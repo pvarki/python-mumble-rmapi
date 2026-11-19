@@ -1,4 +1,4 @@
-// Unit tests for the push-to-talk binding and the browser slot: `pnpm test`.
+// Unit tests for the push-to-talk binding and the browser id: `pnpm test`.
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
@@ -8,7 +8,7 @@ import {
   isButton,
   isKey,
   loadBinding,
-  loadSlot,
+  loadBrowser,
   parseBinding,
   saveBinding,
   talksOn,
@@ -112,25 +112,43 @@ describe("talksOn", () => {
   });
 });
 
-describe("slot", () => {
-  it("picks one of web-1 to web-9 once and keeps it", () => {
+describe("browser", () => {
+  const id = "laptop-browser-01";
+  it("keeps a valid stored id", () => {
     const store = memory();
+    store.setItem("mumble.browser", id);
     assert.equal(
-      loadSlot(store, () => 0.999),
-      9,
+      loadBrowser(store, () => assert.fail("fresh")),
+      id,
+    );
+  });
+  it("replaces a missing or malformed id and stores the new one", () => {
+    for (const bad of [
+      null,
+      "",
+      "a".repeat(15),
+      "a".repeat(65),
+      "laptop_browser_01",
+      "laptop-browser-01\n",
+    ]) {
+      const store = memory();
+      if (bad !== null) store.setItem("mumble.browser", bad);
+      assert.equal(
+        loadBrowser(store, () => id),
+        id,
+        String(bad),
+      );
+      assert.equal(store.data.get("mumble.browser"), id);
+    }
+  });
+  it("gives a fresh id without storage", () => {
+    assert.equal(
+      loadBrowser(broken, () => id),
+      id,
     );
     assert.equal(
-      loadSlot(store, () => 0),
-      9,
-    );
-    store.setItem("mumble.webSlot", "12");
-    assert.equal(
-      loadSlot(store, () => 0),
-      1,
-    );
-    assert.equal(
-      loadSlot(broken, () => 0.5),
-      5,
+      loadBrowser(null, () => id),
+      id,
     );
   });
 });

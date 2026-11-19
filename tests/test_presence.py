@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import io
 import urllib.error
 import urllib.request
@@ -57,17 +58,18 @@ class FakePost:
 
 def test_reports_changes_and_heartbeats() -> None:
     """Unchanged presence is resent only after the heartbeat; failures are retried at once"""
-    post = FakePost(200, OSError("down"), 500, 200, 200)
+    post = FakePost(200, OSError("down"), http.client.BadStatusLine("junk"), 500, 200, 200)
     reporter = PresenceReporter(url="http://m/api/v1/agent/presence", post=post, heartbeat=30)
     one = [{"callsign": "VOICE1", "channel": "/"}]
     two = [*one, {"callsign": "VOICE3", "channel": "/"}]
     reporter.report(one, now=0)
     reporter.report(one, now=10)  # unchanged, not due
     reporter.report(two, now=11)  # changed: fails
-    reporter.report(two, now=12)  # retried: refused
-    reporter.report(two, now=13)  # retried: sent
+    reporter.report(two, now=12)  # retried: garbled
+    reporter.report(two, now=13)  # retried: refused
+    reporter.report(two, now=14)  # retried: sent
     reporter.report(two, now=50)  # heartbeat
-    assert post.bodies == [{"sessions": one}] + [{"sessions": two}] * 4
+    assert post.bodies == [{"sessions": one}] + [{"sessions": two}] * 5
 
 
 class _Resp(io.BytesIO):
