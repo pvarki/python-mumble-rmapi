@@ -21,6 +21,9 @@ LOGGER = logging.getLogger(__name__)
 REJECT = -1
 UNKNOWN = -2
 TRY_LATER = -3
+# Murmur's own limit, which it applies only to logins the authenticator leaves to it. It hands the authenticator
+# any name, of up to 8 MiB and before any certificate, so this is the only length check on a login.
+MAX_NAME_LENGTH = 512
 
 
 class RevocationCheck(Protocol):
@@ -100,6 +103,8 @@ class Authenticator:
     def refusal(self, name: str, certificates: list[bytes], ticket: str | None = None) -> Refusal | None:
         """Why this connection must not be in, or None when it may. ticket is the login password; the sweep
         leaves it out."""
+        if len(name) > MAX_NAME_LENGTH:
+            return Refusal(f"username over {MAX_NAME_LENGTH} characters")
         now = self._clock()
         try:
             username = parse_username(name)
@@ -123,7 +128,7 @@ class Authenticator:
         the login's password, which matters only from the voice gateway."""
         refusal = self.refusal(name, certificates, ticket)
         if refusal is not None:
-            LOGGER.log(AUDIT, "Refused %r: %s", name, refusal.reason)
+            LOGGER.log(AUDIT, "Refused %r: %s", name[:MAX_NAME_LENGTH], refusal.reason)
             return TRY_LATER if refusal.transient else REJECT
         user_id = self._ids.get_or_assign(name)
         LOGGER.info("Accepted %r as user %d", name, user_id)

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from pathlib import Path
 
 import pytest
 
-from mumblermapi.authenticator import REJECT, TRY_LATER, UNKNOWN, Authenticator, Refusal
+from mumblermapi.authenticator import MAX_NAME_LENGTH, REJECT, TRY_LATER, UNKNOWN, Authenticator, Refusal
 from mumblermapi.identity import CertVerifier, Identity
 from mumblermapi.ocsp import OcspUnavailable
 from mumblermapi.policy import Policy
@@ -82,6 +83,18 @@ def test_refusal_explains(pki: Pki, tmp_path: Path) -> None:
     assert auth.refusal("ALPHA_1---vs1", [pki.alpha.der]) == Refusal("certificate revoked")
     revocation.down = True
     assert auth.refusal("ALPHA_1---vs1", [pki.alpha.der]) == Refusal("down", transient=True)
+
+
+def test_overlong_names_are_refused_unread(pki: Pki, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    """Murmur asks before checking the length itself; neither the check nor the log takes the whole name"""
+    auth = _auth(pki, tmp_path)
+    with caplog.at_level(logging.DEBUG):
+        assert auth.authenticate("A" * (MAX_NAME_LENGTH + 1) + "---" + "x" * 1_000_000, [pki.alpha.der]) == REJECT
+    assert caplog.records[-1].getMessage().endswith(f"username over {MAX_NAME_LENGTH} characters")
+    assert all(len(r.getMessage()) < 2 * MAX_NAME_LENGTH for r in caplog.records)
+    # Murmur's own limit, 512, still gets as far as the other checks
+    longest = auth.refusal("A" * MAX_NAME_LENGTH, [pki.alpha.der])
+    assert MAX_NAME_LENGTH == 512 and longest is not None and "characters" not in longest.reason
 
 
 def test_unknown_names_and_ids(pki: Pki, tmp_path: Path) -> None:
