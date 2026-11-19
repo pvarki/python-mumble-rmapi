@@ -14,9 +14,10 @@ from mumblermapi.authenticator import Refusal
 from mumblermapi.channels import MAX_DEPTH
 from mumblermapi.enforce import OPEN, acl_of, members_only
 from mumblermapi.policy import Policy, Unit
+from mumblermapi.presence import PresenceReporter
 from mumblermapi.userids import UserIds
 
-from .fake_murmur import MUMBLE, FakeServer, InvalidSecretException, NestingLimitException
+from .fake_murmur import ICE, MUMBLE, FakeServer, InvalidSecretException, NestingLimitException
 
 POLICY = Policy(
     version=2,
@@ -271,6 +272,57 @@ def test_sweep() -> None:
     server.getCertificateList = certificates  # type: ignore[method-assign]
     agent._sweep(MUMBLE, server, FakeAuth())  # type: ignore[arg-type]
     assert server.log == ["kick 1"]
+
+
+def rounds(ids: UserIds, reports: list[object] | None = None) -> agent.Rounds:
+    """The agent's rounds, with presence reports collected in reports, or none made"""
+
+    def post(url: str, body: object, timeout: float) -> int:
+        assert reports is not None
+        reports.append(body)
+        return 200
+
+    reporter = None if reports is None else PresenceReporter("http://m/presence", post=post)
+    return agent.Rounds(ICE, MUMBLE, FakeAuth(), ids, reporter, sweep_seconds=60)  # type: ignore[arg-type]
+
+
+def test_a_round_sweeps_first(ids: UserIds) -> None:
+    """A revoked certificate is disconnected even while enforcing the policy keeps failing; presence then stays
+    unreported, so health shows the failure"""
+    server = murmur()
+    server.addChannel = wrong_secret  # type: ignore[method-assign]
+    reports: list[object] = []
+    loop = rounds(ids, reports)
+    policy = Policy(version=2, refused=frozenset({"OTHER"}))
+    loop.round(server, policy, units=True)
+    # BAD's certificate is revoked; OTHER is refused by mumblermapi, which enforcement sees to before it fails
+    assert server.log == ["kick 3", "kick 4"] and reports == [] and loop.next_sweep > 0
+
+    del server.addChannel
+    loop.round(server, policy, units=True)
+    assert server.id_of("/Missions/Guard") and len(reports) == 1
+
+
+def test_a_failed_sweep_holds_up_nothing(ids: UserIds) -> None:
+    """The policy is still enforced and presence reported, and the sweep is tried again next round"""
+    server = murmur()
+    server.getCertificateList = wrong_secret  # type: ignore[method-assign]
+    reports: list[object] = []
+    loop = rounds(ids, reports)
+    loop.round(server, POLICY, units=True)
+    assert server.id_of("/Units/10") and len(reports) == 1 and loop.next_sweep == 0
+
+
+def test_a_round_warns_about_refused_nets(ids: UserIds, caplog: pytest.LogCaptureFixture) -> None:
+    """Once, not every round"""
+    server = murmur()
+    policy = Policy(version=2, units=(chain(server.nesting_limit + 1, "00"),))
+    loop = rounds(ids)
+    with caplog.at_level(logging.WARNING, logger=agent.__name__):
+        loop.round(server, policy, units=True)
+        loop.round(server, policy, units=True)
+    warned = [r for r in caplog.records if r.getMessage().startswith("Murmur refused")]
+    assert len(warned) == 1 and loop.left_out == ["/Units" + "/00" * server.nesting_limit]
 
 
 def test_servant() -> None:

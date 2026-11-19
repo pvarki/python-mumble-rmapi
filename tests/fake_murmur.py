@@ -7,19 +7,23 @@ from types import ModuleType, SimpleNamespace
 from typing import Any
 
 
-class InvalidSessionException(Exception):
+class IceException(Exception):
+    """Ice.Exception, which every error over Ice derives from"""
+
+
+class InvalidSessionException(IceException):
     """Murmur's: the session is gone"""
 
 
-class InvalidChannelException(Exception):
+class InvalidChannelException(IceException):
     """Murmur's: the channel is gone"""
 
 
-class NestingLimitException(Exception):
+class NestingLimitException(IceException):
     """Murmur's: the channel would nest past channelnestinglimit"""
 
 
-class InvalidSecretException(Exception):
+class InvalidSecretException(IceException):
     """Murmur's: the Ice secret is wrong"""
 
 
@@ -52,7 +56,9 @@ class Group(SimpleNamespace):
         )  # fmt: skip
 
 
-# Stands in for the MumbleServer module that Ice generates from the slice
+# Stand in for the Ice module and the MumbleServer module that Ice generates from the slice
+ICE = ModuleType("Ice")
+ICE.Exception = IceException  # type: ignore[attr-defined]
 MUMBLE = ModuleType("MumbleServer")
 MUMBLE.InvalidSessionException = InvalidSessionException  # type: ignore[attr-defined]
 MUMBLE.InvalidChannelException = InvalidChannelException  # type: ignore[attr-defined]

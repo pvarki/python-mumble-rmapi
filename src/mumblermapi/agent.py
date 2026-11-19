@@ -13,6 +13,7 @@ import threading
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 from importlib.resources import files
 from types import ModuleType
 from typing import Any
@@ -256,6 +257,44 @@ def _server(meta: Any, server_id: int | None) -> Any:
     return booted[0]
 
 
+@dataclass
+class Rounds:
+    """What murmur-agent does with Murmur each round, and what it carries from one round to the next"""
+
+    ice: ModuleType
+    mumble: ModuleType
+    auth: Authenticator
+    ids: UserIds
+    reporter: PresenceReporter | None
+    sweep_seconds: float
+    next_sweep: float = field(default=0.0, init=False)
+    left_out: list[str] = field(default_factory=list, init=False)
+
+    def round(self, server: Any, policy: Policy, units: bool) -> None:
+        """Sweep certificates when due, then make Murmur match the policy and report presence.
+
+        The sweep goes first, on its own, so that no lasting failure to enforce the policy stops disconnecting
+        revoked certificates. Presence follows enforcement, so a pass that keeps failing stops the reports and
+        mumblermapi's health shows it.
+        """
+        not_ready = (self.ice.Exception, RuntimeError)
+        if time.monotonic() >= self.next_sweep:
+            try:
+                _sweep(self.mumble, server, self.auth)
+            except not_ready as exc:
+                LOGGER.warning("Murmur not ready for the certificate sweep: %s", exc)
+            else:
+                self.next_sweep = time.monotonic() + self.sweep_seconds
+        try:
+            left_out = _enforce(self.mumble, server, policy, self.ids, units)
+            if self.reporter:
+                self.reporter.report(_presence(self.mumble, server), time.monotonic())
+        except not_ready as exc:
+            LOGGER.warning("Murmur not ready: %s", exc)
+        else:
+            self.left_out = _warn_left_out(left_out, self.left_out)
+
+
 def run(config: AgentConfig, stop: threading.Event) -> None:  # pragma: no cover  # needs Ice and Murmur
     """Register with Murmur and keep it in shape until stopped"""
     ice, mumble = _load_ice()
@@ -290,8 +329,7 @@ def run(config: AgentConfig, stop: threading.Event) -> None:  # pragma: no cover
         meta = mumble.MetaPrx.uncheckedCast(
             communicator.stringToProxy(f"Meta:tcp -h {config.ice_host} -p {config.ice_port}")
         )
-        next_sweep = 0.0
-        left_out: list[str] = []
+        rounds = Rounds(ice, mumble, auth, ids, reporter, config.sweep_seconds)
         while not stop.is_set():
             if source:
                 source.refresh()
@@ -299,16 +337,10 @@ def run(config: AgentConfig, stop: threading.Event) -> None:  # pragma: no cover
                 server = _server(meta, config.server_id)
                 # Re-registering every round re-attaches the authenticator after a Murmur restart.
                 server.setAuthenticator(authenticator)
-                left_out = _warn_left_out(
-                    _enforce(mumble, server, policy(), ids, units=source is None or source.ready), left_out
-                )
-                if reporter:
-                    reporter.report(_presence(mumble, server), time.monotonic())
-                if time.monotonic() >= next_sweep:
-                    _sweep(mumble, server, auth)
-                    next_sweep = time.monotonic() + config.sweep_seconds
             except (ice.Exception, RuntimeError) as exc:
                 LOGGER.warning("Murmur not ready: %s", exc)
+            else:
+                rounds.round(server, policy(), units=source is None or source.ready)
             stop.wait(config.poll_seconds)
 
 
