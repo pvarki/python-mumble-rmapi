@@ -11,6 +11,10 @@ class IceException(Exception):
     """Ice.Exception, which every error over Ice derives from"""
 
 
+class MemoryLimitException(IceException):
+    """Ice's: a message is over Ice.MessageSizeMax"""
+
+
 class InvalidSessionException(IceException):
     """Murmur's: the session is gone"""
 
@@ -59,6 +63,7 @@ class Group(SimpleNamespace):
 # Stand in for the Ice module and the MumbleServer module that Ice generates from the slice
 ICE = ModuleType("Ice")
 ICE.Exception = IceException  # type: ignore[attr-defined]
+ICE.MemoryLimitException = MemoryLimitException  # type: ignore[attr-defined]
 MUMBLE = ModuleType("MumbleServer")
 MUMBLE.InvalidSessionException = InvalidSessionException  # type: ignore[attr-defined]
 MUMBLE.InvalidChannelException = InvalidChannelException  # type: ignore[attr-defined]

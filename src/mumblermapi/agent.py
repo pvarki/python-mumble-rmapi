@@ -32,6 +32,17 @@ from .userids import UserIds
 
 LOGGER = logging.getLogger(__name__)
 _SLICE_FALLBACK_DIR = "/usr/share/ice/slice"
+# Murmur forwards a login's name and password, before checking either, from a message of up to 8 MiB. It decodes
+# them as UTF-8 and encodes them again for Ice, which makes each invalid byte three, and it drops the authenticator
+# when the call fails. Anything smaller on the agent's adapter lets anyone stop every login; the certificate chain
+# needs room on top.
+MURMUR_MESSAGE_BYTES = 0x7FFFFF
+ADAPTER = "Agent"
+ADAPTER_MESSAGE_KIB = 3 * MURMUR_MESSAGE_BYTES // 1024 + 1024
+# Murmur's answers list every user or channel at once and have no such bound: comments stay under 5000 characters
+# with HTML off, so this holds several hundred users' worth, but nothing in Murmur caps the plugin data a client
+# sends.
+ICE_MESSAGE_KIB = 10 * 1024
 
 
 def _load_ice() -> tuple[ModuleType, ModuleType]:  # pragma: no cover  # needs the image's Ice
@@ -52,6 +63,15 @@ def _answer[T](call: Callable[[], T], fallback: T) -> T:
     except Exception:
         LOGGER.exception("A check for Murmur failed, so it is answered %r", fallback)
         return fallback
+
+
+def _properties(ice: ModuleType) -> Any:
+    """The secret goes with every call, and messages may be as large as Murmur makes them"""
+    properties = ice.createProperties()
+    properties.setProperty("Ice.ImplicitContext", "Shared")
+    properties.setProperty("Ice.MessageSizeMax", str(ICE_MESSAGE_KIB))
+    properties.setProperty(f"{ADAPTER}.MessageSizeMax", str(ADAPTER_MESSAGE_KIB))
+    return properties
 
 
 def _servant(mumble: ModuleType, auth: Authenticator) -> Any:
@@ -293,7 +313,7 @@ class Rounds:
             try:
                 _sweep(self.mumble, server, self.auth)
             except not_ready as exc:
-                LOGGER.warning("Murmur not ready for the certificate sweep: %s", exc)
+                self._failed("the certificate sweep", exc)
             else:
                 self.next_sweep = time.monotonic() + self.sweep_seconds
         try:
@@ -301,9 +321,15 @@ class Rounds:
             if self.reporter:
                 self.reporter.report(_presence(self.mumble, server), time.monotonic())
         except not_ready as exc:
-            LOGGER.warning("Murmur not ready: %s", exc)
+            self._failed("the plan", exc)
         else:
             self.left_out = _warn_left_out(left_out, self.left_out)
+
+    def _failed(self, what: str, exc: Exception) -> None:
+        if isinstance(exc, self.ice.MemoryLimitException):
+            LOGGER.error("Murmur's answer for %s is over the agent's %d KiB limit: %s", what, ICE_MESSAGE_KIB, exc)
+        else:
+            LOGGER.warning("Murmur not ready for %s: %s", what, exc)
 
 
 def run(config: AgentConfig, stop: threading.Event) -> None:  # pragma: no cover  # needs Ice and Murmur
@@ -328,13 +354,11 @@ def run(config: AgentConfig, stop: threading.Event) -> None:  # pragma: no cover
         gateway=CertVerifier.from_pem_file(config.gateway_ca) if config.gateway_ca else None,
     )
 
-    properties = ice.createProperties()
-    properties.setProperty("Ice.ImplicitContext", "Shared")
     init_data = ice.InitializationData()
-    init_data.properties = properties
+    init_data.properties = _properties(ice)
     with ice.initialize(init_data) as communicator:
         communicator.getImplicitContext().put("secret", config.ice_secret)
-        adapter = communicator.createObjectAdapterWithEndpoints("Agent", f"tcp -h 127.0.0.1 -p {config.callback_port}")
+        adapter = communicator.createObjectAdapterWithEndpoints(ADAPTER, f"tcp -h 127.0.0.1 -p {config.callback_port}")
         adapter.activate()
         authenticator = mumble.ServerAuthenticatorPrx.uncheckedCast(adapter.addWithUUID(_servant(mumble, auth)))
         meta = mumble.MetaPrx.uncheckedCast(

@@ -17,7 +17,14 @@ from mumblermapi.policy import Policy, Unit
 from mumblermapi.presence import PresenceReporter
 from mumblermapi.userids import UserIds
 
-from .fake_murmur import ICE, MUMBLE, FakeServer, InvalidSecretException, NestingLimitException
+from .fake_murmur import (
+    ICE,
+    MUMBLE,
+    FakeServer,
+    InvalidSecretException,
+    MemoryLimitException,
+    NestingLimitException,
+)
 
 POLICY = Policy(
     version=2,
@@ -313,6 +320,22 @@ def test_a_failed_sweep_holds_up_nothing(ids: UserIds) -> None:
     assert server.id_of("/Units/10") and len(reports) == 1 and loop.next_sweep == 0
 
 
+def test_a_round_names_oversized_answers(ids: UserIds, caplog: pytest.LogCaptureFixture) -> None:
+    """An answer over Ice's limit is no outage: the log says what it is"""
+
+    def oversized(*args: object) -> Any:
+        raise MemoryLimitException()
+
+    server = murmur()
+    server.getUsers = oversized  # type: ignore[method-assign]
+    with caplog.at_level(logging.WARNING, logger=agent.__name__):
+        rounds(ids).round(server, POLICY, units=True)
+    assert [(r.levelname, r.getMessage().split(" is over")[0]) for r in caplog.records] == [
+        ("ERROR", "Murmur's answer for the certificate sweep"),
+        ("ERROR", "Murmur's answer for the plan"),
+    ]
+
+
 def test_a_round_warns_about_refused_nets(ids: UserIds, caplog: pytest.LogCaptureFixture) -> None:
     """Once, not every round"""
     server = murmur()
@@ -359,6 +382,17 @@ def test_servant_answers_when_a_check_fails(caplog: pytest.LogCaptureFixture, er
         assert servant.getInfo(7) == (False, {})
         assert servant.nameToId("VOICE1---a") == UNKNOWN and servant.idToName(7) == ""
     assert len(caplog.records) == 4 and all(r.exc_info for r in caplog.records)
+
+
+def test_ice_takes_what_murmur_sends() -> None:
+    """Murmur's largest login, with every invalid UTF-8 byte re-encoded as three, fits the agent's adapter with
+    room for a certificate chain; Murmur's answers to the agent get their own limit"""
+    properties: dict[str, str] = {}
+    ice: Any = SimpleNamespace(createProperties=lambda: SimpleNamespace(setProperty=properties.__setitem__))
+    agent._properties(ice)
+    assert int(properties[f"{agent.ADAPTER}.MessageSizeMax"]) * 1024 >= 3 * 0x7FFFFF + 512 * 1024
+    assert properties["Ice.MessageSizeMax"] == str(agent.ICE_MESSAGE_KIB)
+    assert properties["Ice.ImplicitContext"] == "Shared"
 
 
 def test_channel_description() -> None:
