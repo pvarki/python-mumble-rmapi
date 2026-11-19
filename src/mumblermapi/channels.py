@@ -33,8 +33,10 @@ ROLES = ("Team Member", "Team Lead", "HQ", "Sniper", "Medic", "Forward Observer"
 # A TAK mission of the same name is ignored rather than allowed to gate it.
 GUARD = "Guard"
 
-# Murmur's default channelname pattern, so the agent never asks for a name Murmur would refuse. Use fullmatch:
-# match() lets "$" pass a trailing newline.
+# Murmur checks a name only when a client makes or renames a channel, never over Ice, so this is the only gate on
+# a net's name: Murmur's default channelname pattern with its dash taken literally (in Murmur's " -=" it is a
+# range that lets most punctuation through), capped at 100 characters. Use fullmatch: match() lets "$" pass a
+# trailing newline.
 NAME_RE = re.compile(r"^[ \-=\w#\[\]{}()@|]{1,100}$")
 
 # Murmur holds 1000 channels by default. The cap also stops YAML aliases from expanding a small plan without end.
@@ -42,9 +44,13 @@ MAX_NETS = 1000
 # Members across a plan, a members list aliased into many nets counted in each: about what a 1 MiB plan holds
 # written out in full, so aliases cannot multiply them past that.
 MAX_MEMBERS = 100_000
-# Far deeper than any organisation. It stops a net whose channels alias a list above it before Python's
-# recursion limit does.
-MAX_DEPTH = 100
+# Murmur's channelnestinglimit, which the deployment leaves at its default. Server::canNest refuses a channel
+# under a parent this many levels below the root, over Ice too. The root is level 0 and Units/ level 1, so a net
+# d deep is at level d + 1.
+MURMUR_NESTING_LIMIT = 10
+# Keeps the last level free for the temporary channels members may make in the deepest net. It also stops a net
+# whose channels alias a list above it before Python's recursion limit does.
+MAX_DEPTH = MURMUR_NESTING_LIMIT - 2
 MAX_DESCRIPTION = 1000  # as long as the admin API lets a description be
 
 

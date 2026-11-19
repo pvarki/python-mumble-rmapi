@@ -5,10 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import yaml
 from fastapi.testclient import TestClient
 
 from mumblermapi import api
 from mumblermapi.api import Settings, create_app
+from mumblermapi.channels import MAX_DEPTH
 from mumblermapi.tak import TakSettings
 
 RMAPI = "rmapi.opendefence-system.serviceaccount.identity.linkerd.cluster.local"
@@ -125,6 +127,25 @@ def test_plan_export_and_import(client: TestClient) -> None:
     assert forged.status_code == 415
     huge = client.post("/api/v1/admin/channels/import", content=b"#" * (api.MAX_PLAN_BYTES + 1), headers=yaml_from)
     assert huge.status_code == 413
+
+
+def test_nets_nest_only_as_deep_as_murmur_takes(client: TestClient) -> None:
+    """A net deeper than MAX_DEPTH is refused with the reason, whether made on its own or imported"""
+    parent = 0
+    for _ in range(MAX_DEPTH):
+        made = client.post("/api/v1/admin/channels", json={"name": "x", "parent": parent}, headers=as_("VOICE1"))
+        parent = made.json()["id"]
+    deeper = client.post("/api/v1/admin/channels", json={"name": "y", "parent": parent}, headers=as_("VOICE1"))
+    assert (deeper.status_code, deeper.json()["detail"]) == (400, f"nets nest at most {MAX_DEPTH} deep")
+    net: dict[str, object] = {"name": "y"}
+    for _ in range(MAX_DEPTH):
+        net = {"name": "y", "channels": [net]}
+    imported = client.post(
+        "/api/v1/admin/channels/import",
+        content=yaml.safe_dump({"channels": [net]}),
+        headers=as_("VOICE1") | {"Content-Type": "application/yaml"},
+    )
+    assert imported.status_code == 400 and f"at most {MAX_DEPTH} deep" in imported.json()["detail"]
 
 
 def test_voice_off_for_one_callsign(client: TestClient) -> None:

@@ -198,12 +198,14 @@ def test_parse_plan_members() -> None:
 
 
 def test_parse_plan_holds_at_most_max_nets() -> None:
-    """A small plan of nested aliases would expand to 2^40 nets; parsing stops at MAX_NETS"""
+    """A small plan of nested aliases, ten nets a level, would expand to millions of nets; parsing stops at MAX_NETS"""
+    top = MAX_DEPTH - 1  # within the depth limit, so that the net limit is what stops it
     levels = ["l0: &l0 [{name: x}]"] + [
-        f"l{k}: &l{k} [{{name: a, channels: *l{k - 1}}}, {{name: b, channels: *l{k - 1}}}]" for k in range(1, 41)
+        f"l{k}: &l{k} [{', '.join(f'{{name: n{i}, channels: *l{k - 1}}}' for i in range(10))}]"
+        for k in range(1, top + 1)
     ]
     with pytest.raises(ChannelPlanError, match=f"at most {MAX_NETS} nets"):
-        parse_plan(yaml.safe_load("\n".join([*levels, "channels: *l40"])))
+        parse_plan(yaml.safe_load("\n".join([*levels, f"channels: *l{top}"])))
     assert len(parse_plan({"channels": [{"name": f"n{i}"} for i in range(MAX_NETS)]})) == MAX_NETS
     with pytest.raises(ChannelPlanError, match="at most"):
         parse_plan({"channels": [{"name": f"n{i}"} for i in range(MAX_NETS + 1)]})
