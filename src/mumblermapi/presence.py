@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import json
 import logging
 import urllib.error
@@ -79,7 +80,7 @@ class PresenceReporter:
             return
         try:
             status = self.post(self.url, {"sessions": entries}, self.timeout)
-        except (OSError, ValueError) as exc:
+        except (OSError, http.client.HTTPException, ValueError) as exc:
             LOGGER.warning("Could not report presence: %s", exc)
             return
         if status != 200:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import io
 import urllib.request
 from datetime import timedelta
@@ -295,6 +296,13 @@ def test_http_post(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(urllib.request, "urlopen", refuse)
     with pytest.raises(OcspUnavailable, match="unreachable"):
+        http_post(URL, b"q", 1.0)
+
+    def garble(request: urllib.request.Request, timeout: float) -> _FakeHttpResponse:
+        raise http.client.BadStatusLine("junk")
+
+    monkeypatch.setattr(urllib.request, "urlopen", garble)
+    with pytest.raises(OcspUnavailable, match="BadStatusLine"):
         http_post(URL, b"q", 1.0)
 
     with pytest.raises(OcspUnavailable, match="refusing"):

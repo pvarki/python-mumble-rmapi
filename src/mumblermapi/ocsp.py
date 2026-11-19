@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import logging
 import threading
 import time
@@ -47,8 +48,8 @@ def http_post(url: str, body: bytes, timeout: float) -> bytes:
                 raise OcspUnavailable(f"OCSP responder answered HTTP {response.status}")
             data: bytes = response.read(MAX_RESPONSE_BYTES)
             return data
-    except OSError as exc:
-        raise OcspUnavailable(f"OCSP responder unreachable: {exc}") from exc
+    except (OSError, http.client.HTTPException) as exc:
+        raise OcspUnavailable(f"OCSP responder unreachable: {exc!r}") from exc
 
 
 def responder_url(cert: x509.Certificate) -> str | None:

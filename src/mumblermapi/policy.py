@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import json
 import logging
 import urllib.request
@@ -117,7 +118,9 @@ def http_get(url: str, headers: dict[str, str], timeout: float) -> tuple[int, by
     try:
         # The scheme is checked above, so urlopen cannot be steered to file:// or similar.
         with urllib.request.urlopen(request, timeout=timeout) as response:  # nosec B310
-            body: bytes = response.read(MAX_STATE_BYTES)
+            body: bytes = response.read(MAX_STATE_BYTES + 1)
+            if len(body) > MAX_STATE_BYTES:
+                raise ValueError(f"the state is over {MAX_STATE_BYTES} bytes")
             return response.status, body
     except urllib.error.HTTPError as exc:
         return exc.code, b""
@@ -145,8 +148,8 @@ class PolicySource:
                 raise ValueError(f"HTTP {status}")
             data = json.loads(body)
             policy = parse_state(data)
-        except (OSError, ValueError, TypeError, KeyError) as exc:
-            LOGGER.warning("Keeping policy version %d, mumblermapi unavailable: %s", self.policy.version, exc)
+        except (OSError, http.client.HTTPException, ValueError, TypeError, KeyError) as exc:
+            LOGGER.warning("Keeping policy version %d, none newer from mumblermapi: %s", self.policy.version, exc)
             return False
         # The ETag also follows mumblermapi's ticket key; older mumblermapis send the version alone
         self._etag = str(data.get("etag", policy.version))
