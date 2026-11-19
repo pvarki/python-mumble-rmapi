@@ -150,6 +150,8 @@ class FakeServer:
         self.channels[state.id] = state
 
     def removeChannel(self, channel_id: int) -> None:
+        if channel_id not in self.channels:
+            raise InvalidChannelException()
         parent = self.channels[channel_id].parent
         gone = {channel_id}
         while more := {c.id for c in self.channels.values() if c.parent in gone} - gone:

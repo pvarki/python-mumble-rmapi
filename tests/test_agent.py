@@ -419,6 +419,16 @@ def test_ice_takes_what_murmur_sends() -> None:
     assert properties["Ice.ImplicitContext"] == "Shared"
 
 
+def test_a_channel_already_gone_counts_as_removed() -> None:
+    """Such as a squatting temporary channel that emptied between reading the tree and removing it"""
+    server = FakeServer()
+    server.channel(5, 0, "RECON", temporary=True)
+    channels = agent.IceChannels(server, MUMBLE)
+    channels.remove_channel(5)
+    channels.remove_channel(5)
+    assert server.log == ["remove 5"]
+
+
 def test_channel_description() -> None:
     """New channels get their description"""
     server = FakeServer()

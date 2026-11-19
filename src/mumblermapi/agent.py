@@ -149,8 +149,10 @@ class IceChannels:
         self._server.setChannelState(state)
 
     def remove_channel(self, channel_id: int) -> None:
-        """Remove a channel; Murmur moves its users to the parent"""
-        self._server.removeChannel(channel_id)
+        """Remove a channel; Murmur moves its users to the parent. One already gone, such as a temporary channel that
+        emptied meanwhile, counts as removed."""
+        with _may_be_gone(self._mumble):
+            self._server.removeChannel(channel_id)
 
 
 def _sweep(mumble: ModuleType, server: Any, auth: Authenticator) -> None:
