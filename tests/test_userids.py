@@ -41,3 +41,20 @@ def test_names(tmp_path: Path) -> None:
     names = ids.names()
     names["B"] = 9
     assert ids.names() == {"A---vs1": 1}
+
+
+def test_unsaved_ids_are_not_handed_out(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A full disk refuses the login; the id is not remembered for a name the file does not have"""
+    path = tmp_path / "ids.json"
+    ids = UserIds(path)
+    ids.get_or_assign("A---a")
+
+    def full(*args: object) -> None:
+        raise OSError("no space left on device")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(ids, "_save", full)
+        with pytest.raises(OSError):
+            ids.get_or_assign("B---b")
+    assert ids.id_for("B---b") is None and ids.name_for(2) is None
+    assert ids.get_or_assign("C---c") == 2 == UserIds(path).id_for("C---c")
