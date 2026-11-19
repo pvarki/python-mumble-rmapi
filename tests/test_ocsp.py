@@ -10,11 +10,13 @@ from typing import Any
 
 import pytest
 from cryptography import x509
+from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import ocsp
 from cryptography.x509.oid import AuthorityInformationAccessOID, ExtendedKeyUsageOID
 
+from mumblermapi import ocsp as ocsp_module
 from mumblermapi.identity import Identity
 from mumblermapi.ocsp import OcspChecker, OcspUnavailable, http_post, responder_url
 
@@ -156,6 +158,20 @@ def test_a_failed_responder_is_left_alone_a_while(pki: Pki) -> None:
     clock.now += 10
     assert checker.is_revoked(_identity(pki, bravo), NOW) is False
     assert len(fetch.requests) == 3
+
+
+@pytest.mark.parametrize(
+    "error", [UnsupportedAlgorithm("signature algorithm"), ValueError("bad extension"), TypeError("bad key")]
+)
+def test_undecodable_response(pki: Pki, monkeypatch: pytest.MonkeyPatch, error: Exception) -> None:
+    """A response cryptography cannot fully read, such as one signed with an unknown algorithm, is no answer"""
+
+    def unknown(*args: object) -> None:
+        raise error
+
+    monkeypatch.setattr(ocsp_module, "_verify_signature", unknown)
+    with pytest.raises(OcspUnavailable, match="undecodable"):
+        _checker(FakeFetch(_response(pki))).is_revoked(_identity(pki), NOW)
 
 
 def test_delegated_responder(pki: Pki) -> None:

@@ -11,7 +11,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta
 
 from cryptography import x509
-from cryptography.exceptions import InvalidSignature
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from cryptography.hazmat.primitives.serialization import Encoding
@@ -166,24 +166,32 @@ class OcspChecker:
             self._down_until[url] = self._clock() + self._retry_seconds
             raise
         try:
-            response = ocsp.load_der_ocsp_response(body)
-        except ValueError as exc:
-            raise OcspUnavailable("unparseable OCSP response") from exc
-        if response.response_status != ocsp.OCSPResponseStatus.SUCCESSFUL:
-            raise OcspUnavailable(f"OCSP responder refused: {response.response_status.name}")
-        responder = _responder(response, identity.issuer)
-        _verify_signature(
-            responder.public_key(),
-            response.signature,
-            response.tbs_response_bytes,
-            response.signature_hash_algorithm,
-        )
-        for single in response.responses:
-            if single.serial_number != identity.leaf.serial_number:
-                continue
-            if single.this_update_utc > now + CLOCK_SKEW:
-                raise OcspUnavailable("OCSP response is from the future")
-            if single.next_update_utc is not None and single.next_update_utc < now - CLOCK_SKEW:
-                raise OcspUnavailable("OCSP response is stale")
-            return single.certificate_status
-        raise OcspUnavailable("OCSP response does not cover the certificate")
+            return _status(body, identity, now)
+        except (ValueError, TypeError, UnsupportedAlgorithm) as exc:
+            raise OcspUnavailable(f"undecodable OCSP response: {exc!r}") from exc
+
+
+def _status(body: bytes, identity: Identity, now: datetime) -> ocsp.OCSPCertStatus:
+    """The certificate's status in a verified, current response; raises OcspUnavailable"""
+    try:
+        response = ocsp.load_der_ocsp_response(body)
+    except ValueError as exc:
+        raise OcspUnavailable("unparseable OCSP response") from exc
+    if response.response_status != ocsp.OCSPResponseStatus.SUCCESSFUL:
+        raise OcspUnavailable(f"OCSP responder refused: {response.response_status.name}")
+    responder = _responder(response, identity.issuer)
+    _verify_signature(
+        responder.public_key(),
+        response.signature,
+        response.tbs_response_bytes,
+        response.signature_hash_algorithm,
+    )
+    for single in response.responses:
+        if single.serial_number != identity.leaf.serial_number:
+            continue
+        if single.this_update_utc > now + CLOCK_SKEW:
+            raise OcspUnavailable("OCSP response is from the future")
+        if single.next_update_utc is not None and single.next_update_utc < now - CLOCK_SKEW:
+            raise OcspUnavailable("OCSP response is stale")
+        return single.certificate_status
+    raise OcspUnavailable("OCSP response does not cover the certificate")
