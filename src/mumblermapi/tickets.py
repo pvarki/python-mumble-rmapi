@@ -24,6 +24,7 @@ SKEW_SECONDS = 5
 # Phones never get these slots, and the gateway gets no others. Murmur compares names case-insensitively.
 WEB_SLOT_PREFIX = "web-"
 WEB_SLOT = re.compile(r"^web-[1-9]$")
+WEB_SLOTS = range(1, 10)  # one per browser of a callsign, web-1 to web-9
 MAX_TICKET_BYTES = 8192
 # libpvarki's AUDIT level, for refused security decisions
 AUDIT = logging.CRITICAL + 5

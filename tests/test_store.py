@@ -7,6 +7,7 @@ import pytest
 
 from mumblermapi.channels import MAX_DEPTH, ChannelSpec
 from mumblermapi.store import Channel, ChannelExists, Store, StoreError, TooDeep
+from mumblermapi.tickets import WEB_SLOTS
 
 
 @pytest.fixture(name="store")
@@ -250,3 +251,28 @@ def test_migrates_implicit_access(tmp_path: Path) -> None:
         ["invite", "inherit"],
         "open",
     )
+
+
+def test_web_slots_per_browser(tmp_path: Path) -> None:
+    """Each browser of a callsign gets its own slot and keeps it, also across a restart; no new version"""
+    store = Store(tmp_path / "db.sqlite")
+    before = store.version()
+    assert store.web_slot("ALPHA_1", "laptop-browser-01", 100.0) == 1
+    assert store.web_slot("ALPHA_1", "phone-browser-0002", 101.0) == 2
+    assert store.web_slot("ALPHA_1", "laptop-browser-01", 102.0) == 1
+    assert store.web_slot("BRAVO_2", "phone-browser-0002", 103.0) == 1  # callsigns do not share slots
+    assert store.version() == before
+    reopened = Store(tmp_path / "db.sqlite")
+    assert reopened.web_slot("ALPHA_1", "phone-browser-0002", 104.0) == 2
+    assert reopened.web_slot("ALPHA_1", "tablet-browser-03", 105.0) == 3
+
+
+def test_tenth_browser_takes_the_oldest_slot(store: Store) -> None:
+    """With all slots held, a new browser takes the one whose last ticket is oldest; a ticket refreshes it"""
+    for slot in WEB_SLOTS:
+        assert store.web_slot("ALPHA_1", f"browser-number-{slot:02}", 100.0 + slot) == slot
+    store.web_slot("ALPHA_1", "browser-number-01", 200.0)  # web-1 is used again, so web-2 is now the oldest
+    assert store.web_slot("ALPHA_1", "browser-number-10", 201.0) == 2
+    assert store.web_slot("ALPHA_1", "browser-number-10", 202.0) == 2
+    # The browser that lost its slot is a new browser now, and web-3 is the oldest
+    assert store.web_slot("ALPHA_1", "browser-number-02", 203.0) == 3

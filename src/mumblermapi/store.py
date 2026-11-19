@@ -1,4 +1,5 @@
-"""mumblermapi's state: users from rmapi, the Units/ channel tree and its members, and TAK missions"""
+"""mumblermapi's state: users from rmapi, the Units/ channel tree and its members, TAK missions and the web
+voice slot each browser holds"""
 
 from __future__ import annotations
 
@@ -8,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .channels import ACCESS, GUARD, MAX_DEPTH, ChannelSpec
+from .tickets import WEB_SLOTS
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -36,6 +38,15 @@ CREATE TABLE IF NOT EXISTS mission_members (
     mission TEXT NOT NULL,
     callsign TEXT NOT NULL,
     PRIMARY KEY (mission, callsign)
+);
+-- Which web slot each of a callsign's browsers logs in with, so two browsers never share one
+CREATE TABLE IF NOT EXISTS web_slots (
+    callsign TEXT NOT NULL,  -- as in the Mumble username
+    browser TEXT NOT NULL,  -- the id the browser keeps for itself
+    slot INTEGER NOT NULL,
+    used_at REAL NOT NULL,  -- wall-clock seconds of the last ticket
+    PRIMARY KEY (callsign, browser),
+    UNIQUE (callsign, slot)
 );
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value INTEGER NOT NULL);
 INSERT OR IGNORE INTO meta (key, value) VALUES ('version', 1);
@@ -326,3 +337,33 @@ class Store:
         """No channels yet"""
         with self._lock:
             return bool(self._db.execute("SELECT COUNT(*) FROM channels").fetchone()[0] == 0)
+
+    # ---- web voice slots
+    def web_slot(self, callsign: str, browser: str, now: float) -> int:
+        """The web slot this browser of the callsign logs in with: the one it had, else the lowest free one.
+        Murmur drops the older of two sessions with one name, so two browsers must not share a slot. No new
+        version: nothing murmur-agent enforces changes."""
+        with self._lock, self._db:
+            row = self._db.execute(
+                "SELECT slot FROM web_slots WHERE callsign = ? AND browser = ?", (callsign, browser)
+            ).fetchone()
+            if row:
+                self._db.execute(
+                    "UPDATE web_slots SET used_at = ? WHERE callsign = ? AND browser = ?", (now, callsign, browser)
+                )
+                return int(row[0])
+            taken = {r[0] for r in self._db.execute("SELECT slot FROM web_slots WHERE callsign = ?", (callsign,))}
+            slot = next((s for s in WEB_SLOTS if s not in taken), None)
+            if slot is None:
+                # ponytail: a new browser takes the slot minted longest ago even if that browser is still in voice,
+                # which drops it; skipping slots presence reports online would fix that
+                oldest = self._db.execute(
+                    "SELECT slot FROM web_slots WHERE callsign = ? ORDER BY used_at, slot LIMIT 1", (callsign,)
+                ).fetchone()
+                slot = int(oldest[0])
+            # REPLACE drops the row of the browser that held a taken-over slot
+            self._db.execute(
+                "INSERT OR REPLACE INTO web_slots (callsign, browser, slot, used_at) VALUES (?, ?, ?, ?)",
+                (callsign, browser, slot, now),
+            )
+            return slot
