@@ -20,7 +20,7 @@ from typing import Any
 from libpvarki.logging import add_trace_and_audit, init_logging
 
 from .authenticator import Authenticator
-from .channels import ExistingChannel, desired_tree, load_plan, prune, reconcile
+from .channels import ChannelRefused, ExistingChannel, desired_tree, load_plan, prune, reconcile
 from .config import AgentConfig
 from .enforce import Acl, Session, acl_of, combine, plan, refused, shadows, violations
 from .identity import CertVerifier
@@ -86,8 +86,9 @@ def _servant(mumble: ModuleType, auth: Authenticator) -> Any:
 class IceChannels:
     """The reconciler's view of a Murmur virtual server"""
 
-    def __init__(self, server: Any) -> None:
+    def __init__(self, server: Any, mumble: ModuleType) -> None:
         self._server = server
+        self._mumble = mumble
 
     def channels(self) -> list[ExistingChannel]:
         """Every channel on the server"""
@@ -97,8 +98,12 @@ class IceChannels:
         ]
 
     def add_channel(self, name: str, parent: int, description: str) -> int:
-        """Create a channel, with its description"""
-        channel_id: int = self._server.addChannel(name, parent)
+        """Create a channel, with its description. Only Murmur's nesting limit is a refusal: any other error
+        means Murmur cannot be worked with, and ends the pass."""
+        try:
+            channel_id: int = self._server.addChannel(name, parent)
+        except self._mumble.NestingLimitException as exc:
+            raise ChannelRefused(f"{name!r} would nest past Murmur's channel nesting limit") from exc
         if description:
             state = self._server.getChannelState(channel_id)
             state.description = description
@@ -147,10 +152,12 @@ def _sessions(server: Any) -> list[Session]:
     return [Session(session, user.name, user.channel) for session, user in server.getUsers().items()]
 
 
-def _enforce(mumble: ModuleType, server: Any, policy: Policy, ids: UserIds, units: bool) -> None:
-    """Make Murmur match the policy. Until the policy is known, Units/ and Missions/ are left as they are.
+def _enforce(mumble: ModuleType, server: Any, policy: Policy, ids: UserIds, units: bool) -> list[str]:
+    """Make Murmur match the policy, and return the paths of nets Murmur refused to create. Until the policy is
+    known, Units/ and Missions/ are left as they are.
 
-    Refused callsigns go first, so that nothing later in the pass can hold their disconnection up.
+    Refused callsigns go first, so that nothing later in the pass can hold their disconnection up. A net Murmur
+    refuses is left out with the nets under it, as if it were not created yet, and the other nets go on.
     """
     sessions = _sessions(server)
     kicked = refused(policy, sessions)
@@ -159,12 +166,13 @@ def _enforce(mumble: ModuleType, server: Any, policy: Policy, ids: UserIds, unit
             LOGGER.warning("Disconnecting session %d: refused by mumblermapi", session)
             server.kickUser(session, "revoked or voice disabled in Deploy App")
 
-    channels = IceChannels(server)
-    created = reconcile(channels, desired_tree(policy.specs(), policy.mission_specs()) if units else desired_tree(()))
+    channels = IceChannels(server, mumble)
+    desired = desired_tree(policy.specs(), policy.mission_specs()) if units else desired_tree(())
+    created, left_out = reconcile(channels, desired)
     if created:
         LOGGER.info("Created channels: %s", ", ".join(created))
     if not units:
-        return
+        return left_out
     existing = channels.channels()
     roots = {c.name: c.id for c in existing if c.parent == 0}
     removed = prune(channels, policy.specs(), roots["Units"], "/Units")
@@ -210,11 +218,21 @@ def _enforce(mumble: ModuleType, server: Any, policy: Policy, ids: UserIds, unit
         with _may_be_gone(mumble):
             LOGGER.info("Stopping session %d listening to channel %d", session, channel_id)
             server.stopListening(session, channel_id)
+    return left_out
 
 
-def _presence(server: Any) -> list[Entry]:
+def _warn_left_out(left_out: list[str], before: list[str]) -> list[str]:
+    """Warn about the nets Murmur refuses when they change, not every round; returns them for the next round"""
+    if left_out and set(left_out) != set(before):
+        LOGGER.warning(
+            "Murmur refused these nets, so they and the nets under them are left out: %s", ", ".join(left_out)
+        )
+    return left_out
+
+
+def _presence(mumble: ModuleType, server: Any) -> list[Entry]:
     """Who is connected, and in which net"""
-    return presence(_sessions(server), channel_paths(IceChannels(server).channels()))
+    return presence(_sessions(server), channel_paths(IceChannels(server, mumble).channels()))
 
 
 @contextmanager
@@ -273,6 +291,7 @@ def run(config: AgentConfig, stop: threading.Event) -> None:  # pragma: no cover
             communicator.stringToProxy(f"Meta:tcp -h {config.ice_host} -p {config.ice_port}")
         )
         next_sweep = 0.0
+        left_out: list[str] = []
         while not stop.is_set():
             if source:
                 source.refresh()
@@ -280,9 +299,11 @@ def run(config: AgentConfig, stop: threading.Event) -> None:  # pragma: no cover
                 server = _server(meta, config.server_id)
                 # Re-registering every round re-attaches the authenticator after a Murmur restart.
                 server.setAuthenticator(authenticator)
-                _enforce(mumble, server, policy(), ids, units=source is None or source.ready)
+                left_out = _warn_left_out(
+                    _enforce(mumble, server, policy(), ids, units=source is None or source.ready), left_out
+                )
                 if reporter:
-                    reporter.report(_presence(server), time.monotonic())
+                    reporter.report(_presence(mumble, server), time.monotonic())
                 if time.monotonic() >= next_sweep:
                     _sweep(mumble, server, auth)
                     next_sweep = time.monotonic() + config.sweep_seconds

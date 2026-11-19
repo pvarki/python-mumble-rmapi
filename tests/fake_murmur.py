@@ -15,6 +15,14 @@ class InvalidChannelException(Exception):
     """Murmur's: the channel is gone"""
 
 
+class NestingLimitException(Exception):
+    """Murmur's: the channel would nest past channelnestinglimit"""
+
+
+class InvalidSecretException(Exception):
+    """Murmur's: the Ice secret is wrong"""
+
+
 class ServerAuthenticator:
     """Base class the agent's servant derives from"""
 
@@ -48,6 +56,8 @@ class Group(SimpleNamespace):
 MUMBLE = ModuleType("MumbleServer")
 MUMBLE.InvalidSessionException = InvalidSessionException  # type: ignore[attr-defined]
 MUMBLE.InvalidChannelException = InvalidChannelException  # type: ignore[attr-defined]
+MUMBLE.NestingLimitException = NestingLimitException  # type: ignore[attr-defined]
+MUMBLE.InvalidSecretException = InvalidSecretException  # type: ignore[attr-defined]
 MUMBLE.ServerAuthenticator = ServerAuthenticator  # type: ignore[attr-defined]
 MUMBLE.UserInfo = SimpleNamespace(UserName=0)  # type: ignore[attr-defined]
 MUMBLE.ACL = ACL  # type: ignore[attr-defined]
@@ -64,6 +74,7 @@ class FakeServer:
     listeners: dict[int, list[int]] = field(default_factory=dict)
     certificates: dict[int, list[bytes]] = field(default_factory=dict)
     log: list[str] = field(default_factory=list)
+    nesting_limit: int = 10  # Murmur's default channelnestinglimit
 
     def __post_init__(self) -> None:
         self.channels.setdefault(
@@ -81,6 +92,14 @@ class FakeServer:
         """A user logs in"""
         self.users[session] = SimpleNamespace(session=session, name=name, channel=channel, userid=userid)
 
+    def level(self, channel_id: int) -> int:
+        """How far below the root a channel is; the root is level 0"""
+        level = 0
+        while channel_id != 0:
+            channel_id = self.channels[channel_id].parent
+            level += 1
+        return level
+
     def id_of(self, path: str) -> int:
         """Channel id by path, e.g. "/Missions/RECON" """
         channel_id = 0
@@ -93,6 +112,11 @@ class FakeServer:
         return dict(self.channels)
 
     def addChannel(self, name: str, parent: int) -> int:
+        if parent not in self.channels:
+            raise InvalidChannelException()
+        # Server::canNest, which Murmur checks over Ice as well as for clients
+        if self.level(parent) >= self.nesting_limit:
+            raise NestingLimitException()
         channel_id = max(self.channels) + 1
         self.channel(channel_id, parent, name)
         return channel_id

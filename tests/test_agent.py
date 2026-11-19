@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -10,11 +11,12 @@ import pytest
 
 from mumblermapi import agent
 from mumblermapi.authenticator import Refusal
+from mumblermapi.channels import MAX_DEPTH
 from mumblermapi.enforce import OPEN, acl_of, members_only
 from mumblermapi.policy import Policy, Unit
 from mumblermapi.userids import UserIds
 
-from .fake_murmur import MUMBLE, FakeServer
+from .fake_murmur import MUMBLE, FakeServer, InvalidSecretException, NestingLimitException
 
 POLICY = Policy(
     version=2,
@@ -152,11 +154,79 @@ def test_enforce_before_policy(ids: UserIds) -> None:
     assert server.acls == {}
 
 
+def chain(depth: int, name: str) -> Unit:
+    """A net depth deep, under nets of the same name"""
+    unit = Unit(100 + depth, name)
+    for level in range(depth - 1, 0, -1):
+        unit = Unit(100 + level, name, children=(unit,))
+    return unit
+
+
+def test_a_refused_net_stalls_no_other(ids: UserIds) -> None:
+    """A net past Murmur's nesting limit is left out with what is under it; every other net is enforced"""
+    server = murmur()
+    stale = server.id_of("/Units/20")
+    server.users[4].channel = stale  # an outsider, inside the open net about to become invite-only
+    server.listeners[stale] = [4, 1]
+    policy = Policy(
+        version=2,
+        units=(
+            chain(server.nesting_limit + 1, "00"),  # first in walk order
+            Unit(1, "10", access="invite", members=frozenset({"VOICE1"})),
+            Unit(2, "20", access="invite", members=frozenset({"VOICE1"})),
+        ),
+    )
+    refused = "/Units" + "/00" * server.nesting_limit
+    assert agent._enforce(MUMBLE, server, policy, ids, units=True) == [refused]
+
+    assert server.id_of("/Units" + "/00" * (server.nesting_limit - 1))
+    assert acl_of(*server.getACL(server.id_of("/Units/10"))) == members_only([1])
+    assert acl_of(*server.getACL(stale)) == members_only([1])
+    assert server.id_of("/Missions/Guard") and server.id_of("/Teams/Red") and server.id_of("/Roles/Medic")
+    assert server.users[4].channel == 0 and server.listeners[stale] == [1]
+
+    server.log.clear()
+    assert agent._enforce(MUMBLE, server, policy, ids, units=True) == [refused]
+    assert server.log == []
+
+
+def wrong_secret(*args: object, **kwargs: object) -> Any:
+    """What every Murmur call raises once the Ice secret no longer matches"""
+    raise InvalidSecretException()
+
+
+def test_other_murmur_errors_end_the_pass(ids: UserIds) -> None:
+    """Only the nesting limit is a refusal: any other error from Murmur still ends the pass"""
+    server = murmur()
+    server.addChannel = wrong_secret  # type: ignore[method-assign]
+    with pytest.raises(InvalidSecretException):
+        agent._enforce(MUMBLE, server, POLICY, ids, units=True)
+
+
+def test_the_deepest_net_has_room_for_temporary_channels(ids: UserIds) -> None:
+    """Nets as deep as mumblermapi takes them fit in Murmur, with a level left for members' temporary channels"""
+    server = murmur()
+    assert agent._enforce(MUMBLE, server, Policy(version=2, units=(chain(MAX_DEPTH, "x"),)), ids, units=True) == []
+    temporary = server.addChannel("huddle", server.id_of("/Units" + "/x" * MAX_DEPTH))
+    with pytest.raises(NestingLimitException):
+        server.addChannel("deeper", temporary)
+
+
+def test_refused_nets_are_warned_about_when_they_change(caplog: pytest.LogCaptureFixture) -> None:
+    """Not every round"""
+    with caplog.at_level(logging.WARNING, logger=agent.__name__):
+        before = agent._warn_left_out(["/Units/a"], [])
+        before = agent._warn_left_out(["/Units/a"], before)
+        before = agent._warn_left_out(["/Units/a", "/Units/b"], before)
+        agent._warn_left_out([], before)
+    assert [r.getMessage().rsplit(": ", 1)[1] for r in caplog.records] == ["/Units/a", "/Units/a, /Units/b"]
+
+
 def test_presence(ids: UserIds) -> None:
     """Who is where, by path"""
     server = murmur()
     agent._enforce(MUMBLE, server, POLICY, ids, units=True)
-    assert agent._presence(server) == [
+    assert agent._presence(MUMBLE, server) == [
         {"callsign": "OTHER", "channel": "/"},
         {"callsign": "VOICE1", "channel": "/"},
         {"callsign": "VOICE3", "channel": "/Missions/RECON"},
@@ -217,7 +287,7 @@ def test_servant() -> None:
 def test_channel_description() -> None:
     """New channels get their description"""
     server = FakeServer()
-    channel_id = agent.IceChannels(server).add_channel("10", 0, "Alfa")
+    channel_id = agent.IceChannels(server, MUMBLE).add_channel("10", 0, "Alfa")
     assert server.channels[channel_id].description == "Alfa"
 
 

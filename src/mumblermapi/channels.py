@@ -63,6 +63,10 @@ class ChannelPlanError(ValueError):
     """The channel plan is malformed"""
 
 
+class ChannelRefused(Exception):
+    """Murmur will not create the channel there, as when it would nest past Murmur's limit"""
+
+
 @dataclass(frozen=True)
 class ChannelSpec:
     """A channel and its children; access is one of ACCESS, or "" for the default. members are callsigns, so
@@ -208,7 +212,7 @@ class ChannelServer(Protocol):
         """Every channel on the server"""
 
     def add_channel(self, name: str, parent: int, description: str) -> int:
-        """Create a channel and return its id"""
+        """Create a channel and return its id; raises ChannelRefused when Murmur will not have it there"""
 
     def set_description(self, channel_id: int, description: str) -> None:
         """Change a channel's description"""
@@ -217,16 +221,19 @@ class ChannelServer(Protocol):
         """Remove a channel and everything under it"""
 
 
-def reconcile(server: ChannelServer, desired: tuple[ChannelSpec, ...], root: int = 0) -> list[str]:
-    """Create the channels that are missing and return their paths; correct the descriptions of the others.
+def reconcile(server: ChannelServer, desired: tuple[ChannelSpec, ...], root: int = 0) -> tuple[list[str], list[str]]:
+    """Create the channels that are missing and correct the descriptions of the others. Returns the paths
+    created and the paths Murmur refused.
 
     Channels are matched by name, so a renamed net is a new channel and the old one is pruned. A temporary
-    channel holding a net's name is replaced.
+    channel holding a net's name is replaced. A refused channel is left out with everything under it, and the
+    rest of the tree still goes in.
     """
     # ponytail: rename = recreate, which moves anyone in the net to its parent; keep a store-id map if renames
     # of busy nets become common
     existing = {(channel.parent, channel.name): channel for channel in server.channels()}
     created: list[str] = []
+    refused: list[str] = []
 
     def walk(specs: tuple[ChannelSpec, ...], parent: int, prefix: str) -> None:
         for spec in specs:
@@ -238,7 +245,11 @@ def reconcile(server: ChannelServer, desired: tuple[ChannelSpec, ...], root: int
                 server.remove_channel(channel.id)
                 channel = None
             if channel is None:
-                channel_id = server.add_channel(spec.name, parent, spec.description)
+                try:
+                    channel_id = server.add_channel(spec.name, parent, spec.description)
+                except ChannelRefused:
+                    refused.append(path)
+                    continue  # the nets under it cannot exist without it
                 created.append(path)
             else:
                 channel_id = channel.id
@@ -247,7 +258,7 @@ def reconcile(server: ChannelServer, desired: tuple[ChannelSpec, ...], root: int
             walk(spec.children, channel_id, path)
 
     walk(desired, root, "")
-    return created
+    return created, refused
 
 
 def prune(server: ChannelServer, desired: tuple[ChannelSpec, ...], root: int, prefix: str = "") -> list[str]:
