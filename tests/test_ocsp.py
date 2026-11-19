@@ -140,6 +140,24 @@ def test_unreachable_keeps_known_good(pki: Pki) -> None:
     assert len(fetch.requests) == 2
 
 
+def test_a_failed_responder_is_left_alone_a_while(pki: Pki) -> None:
+    """During an outage, one timeout per retry period, not one per certificate; known-good stays good meanwhile"""
+    bravo = issue("BRAVO 2", pki.ca)
+    fetch = FakeFetch(_response(pki), OcspUnavailable("down"), _response(pki, leaf=bravo))
+    clock = FakeClock()
+    checker = _checker(fetch, clock)
+    assert checker.is_revoked(_identity(pki), NOW) is False
+    clock.now += 301
+    assert checker.is_revoked(_identity(pki), NOW) is False  # asks, fails
+    assert checker.is_revoked(_identity(pki), NOW) is False  # does not ask
+    with pytest.raises(OcspUnavailable, match="moments ago"):
+        checker.is_revoked(_identity(pki, bravo), NOW)
+    assert len(fetch.requests) == 2
+    clock.now += 10
+    assert checker.is_revoked(_identity(pki, bravo), NOW) is False
+    assert len(fetch.requests) == 3
+
+
 def test_delegated_responder(pki: Pki) -> None:
     """A responder certificate issued by the CA for OCSP signing is accepted"""
     delegate = issue("OCSP", pki.ca, eku=[ExtendedKeyUsageOID.OCSP_SIGNING])

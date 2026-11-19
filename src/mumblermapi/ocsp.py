@@ -102,7 +102,9 @@ class OcspChecker:
     """Asks the responder whether a certificate is revoked, caching answers.
 
     Revocations are issued only in rmapi. While the responder is unreachable nobody can revoke anything, so a
-    certificate that was answered "good" before stays good; one never seen before is refused.
+    certificate that was answered "good" before stays good; one never seen before is refused. A responder that
+    failed is left alone for retry_seconds, so that an outage costs one timeout, not one per login and per
+    connected user in the sweep.
     """
 
     def __init__(
@@ -111,14 +113,17 @@ class OcspChecker:
         url_override: str | None = None,
         cache_seconds: float = 300.0,
         timeout: float = 3.0,
+        retry_seconds: float = 10.0,
         fetch: Fetch = http_post,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._url_override = url_override
         self._cache_seconds = cache_seconds
         self._timeout = timeout
+        self._retry_seconds = retry_seconds
         self._fetch = fetch
         self._clock = clock
+        self._down_until: dict[str, float] = {}  # by responder URL
         self._good: dict[int, float] = {}
         self._revoked: set[int] = set()
         self._lock = threading.Lock()
@@ -152,8 +157,14 @@ class OcspChecker:
         url = self._url_override or responder_url(identity.leaf)
         if not url:
             raise OcspUnavailable("certificate names no OCSP responder")
+        if self._clock() < self._down_until.get(url, float("-inf")):
+            raise OcspUnavailable("OCSP responder failed moments ago")
         request = ocsp.OCSPRequestBuilder().add_certificate(identity.leaf, identity.issuer, hashes.SHA256()).build()
-        body = self._fetch(url, request.public_bytes(Encoding.DER), self._timeout)
+        try:
+            body = self._fetch(url, request.public_bytes(Encoding.DER), self._timeout)
+        except OcspUnavailable:
+            self._down_until[url] = self._clock() + self._retry_seconds
+            raise
         try:
             response = ocsp.load_der_ocsp_response(body)
         except ValueError as exc:
