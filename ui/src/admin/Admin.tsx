@@ -1,3 +1,4 @@
+import { Download } from "lucide-react";
 import {
   useEffect,
   useId,
@@ -10,7 +11,6 @@ import { useTranslation } from "react-i18next";
 
 import { api } from "../api";
 import { NS } from "../i18n";
-import { Download } from "../icons";
 import { read, write } from "../lib/storage";
 import * as ui from "../ui";
 import { useAdminData } from "./hooks/useAdminData";

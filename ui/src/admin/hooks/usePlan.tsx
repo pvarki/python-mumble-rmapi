@@ -1,9 +1,9 @@
+import { Download, ListPlus, Trash2, Upload } from "lucide-react";
 import type { ChangeEvent, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, type Template } from "../../api";
 import { NS } from "../../i18n";
-import { Download, ListPlus, Trash, Upload } from "../../icons";
 import * as ui from "../../ui";
 import type { MenuItem } from "../MoreMenu";
 import type { Notice } from "../NoticeLine";
@@ -114,7 +114,7 @@ export function usePlan({
       ? [
           {
             label: t("admin.clearAll"),
-            icon: <Trash className={ui.cx(ui.ICON, ui.LINK_DANGER_ICON)} />,
+            icon: <Trash2 className={ui.cx(ui.ICON, ui.LINK_DANGER_ICON)} />,
             action: () => openTop("clear"),
           },
         ]

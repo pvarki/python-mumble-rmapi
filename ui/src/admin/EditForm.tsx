@@ -1,9 +1,9 @@
+import { Loader2 } from "lucide-react";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, type ChannelEdit } from "../api";
 import { NS } from "../i18n";
-import { Loader } from "../icons";
 import * as ui from "../ui";
 import type { NetNode } from "./tree";
 import type { TreeCtx } from "./types";
@@ -91,7 +91,7 @@ export function EditForm({
             className={ui.cx(ui.BTN_SM, ui.SM_PRIMARY)}
             aria-describedby={describedBy}
           >
-            {ctx.pending.has(key) && <Loader className={ui.LOADER} />}
+            {ctx.pending.has(key) && <Loader2 className={ui.LOADER} />}
             {t("admin.save")}
           </button>
         ) : (

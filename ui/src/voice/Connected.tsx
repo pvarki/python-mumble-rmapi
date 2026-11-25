@@ -1,8 +1,8 @@
+import { AlertCircle, Mic } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 
 import { NS, RAW } from "../i18n";
-import { AlertCircle, Mic } from "../icons";
 import * as ui from "../ui";
 import type { Snapshot, VoiceClient } from "./client";
 import { KeyLine } from "./KeyLine";

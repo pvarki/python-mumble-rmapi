@@ -1,7 +1,7 @@
+import { AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { NS } from "../i18n";
-import { AlertCircle } from "../icons";
 import * as ui from "../ui";
 import type { Failure } from "./client";
 

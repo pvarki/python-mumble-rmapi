@@ -1,6 +1,7 @@
 // Voice in the browser: join a net and talk with push-to-talk, on a laptop or a phone (VOICE-PLAN §4.10).
 // Push-to-talk is the big button or a key or mouse button the user picks; it works only while this tab has
 // focus, and losing focus lets go.
+import { Loader2, Mic } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -10,7 +11,6 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Loader, Mic } from "../icons";
 import { NS } from "../i18n";
 import * as ui from "../ui";
 import { loadBrowser } from "./browser";
@@ -69,7 +69,7 @@ export function Talk() {
             onClick={connect}
           >
             {s.phase === "connecting" ? (
-              <Loader className={ui.LOADER} />
+              <Loader2 className={ui.LOADER} />
             ) : (
               <Mic className={ui.ICON} />
             )}

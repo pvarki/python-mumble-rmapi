@@ -1,7 +1,7 @@
+import { AlertCircle, CheckCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { NS } from "../i18n";
-import { AlertCircle, CheckCircle, X } from "../icons";
 import * as ui from "../ui";
 
 export interface Notice {

@@ -1,8 +1,8 @@
+import { Loader2, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { NS } from "../i18n";
-import { Loader, X } from "../icons";
 import * as ui from "../ui";
 
 // Adds are keyed per name, so several can be in flight; the form only shows that one is
@@ -64,7 +64,7 @@ export function NameForm({
           className={ui.cx(ui.BTN_SM, ui.SM_PRIMARY)}
           onClick={submit}
         >
-          {busy && <Loader className={ui.LOADER} />}
+          {busy && <Loader2 className={ui.LOADER} />}
           {t("admin.add")}
         </button>
       ) : (

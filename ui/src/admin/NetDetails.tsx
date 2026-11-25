@@ -1,9 +1,9 @@
+import { CornerLeftUp, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, type Access } from "../api";
 import { NS, RAW } from "../i18n";
-import { CornerLeftUp, Lock, Pencil, Plus, Trash } from "../icons";
 import * as ui from "../ui";
 import { AccessChoice } from "./AccessChoice";
 import { EditForm } from "./EditForm";
@@ -321,7 +321,7 @@ export function NetDetails({
                 className={ui.cx(ui.LINK_BTN, ui.LINK_DANGER)}
                 onClick={() => ctx.setMode("remove")}
               >
-                <Trash className={ui.cx(ui.ICON_META, ui.LINK_DANGER_ICON)} />
+                <Trash2 className={ui.cx(ui.ICON_META, ui.LINK_DANGER_ICON)} />
                 {t("admin.removeNet")}
               </button>
             </div>

@@ -1,9 +1,9 @@
+import { Loader2, X } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Template } from "../api";
 import { NS, RAW } from "../i18n";
-import { Loader, X } from "../icons";
 import * as ui from "../ui";
 
 // The channel plan templates on offer, at the top of the net list. Applying one adds the nets it has that are
@@ -83,7 +83,7 @@ export function TemplatePanel({
               onClick={() => onApply(template)}
             >
               {pending.has(`tpl:${template.id}`) && (
-                <Loader className={ui.LOADER} />
+                <Loader2 className={ui.LOADER} />
               )}
               {t("admin.apply")}
             </button>

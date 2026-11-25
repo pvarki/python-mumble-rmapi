@@ -1,3 +1,4 @@
+import { MoreHorizontal } from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -9,7 +10,6 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { NS } from "../i18n";
-import { MoreHorizontal } from "../icons";
 import * as ui from "../ui";
 
 export interface MenuItem {

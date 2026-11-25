@@ -1,8 +1,8 @@
+import { Flag, Users } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { NS } from "../i18n";
-import { Flag, Users } from "../icons";
 import * as ui from "../ui";
 import { takeAsked } from "./hooks/useFocusRequests";
 import { OnlineCell } from "./OnlineCell";

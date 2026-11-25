@@ -1,8 +1,8 @@
+import { ChevronRight, CornerLeftUp, Lock } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { NS, RAW } from "../i18n";
-import { ChevronRight, CornerLeftUp, Lock } from "../icons";
 import * as ui from "../ui";
 import { takeAsked, type FocusTarget } from "./hooks/useFocusRequests";
 import { OnlineCell } from "./OnlineCell";

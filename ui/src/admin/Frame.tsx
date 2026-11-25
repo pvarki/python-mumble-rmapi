@@ -1,8 +1,8 @@
+import { ArrowLeft, X } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { NS, RAW } from "../i18n";
-import { ArrowLeft, X } from "../icons";
 import * as ui from "../ui";
 import type { TreeCtx } from "./types";
 

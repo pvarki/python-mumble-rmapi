@@ -1,9 +1,9 @@
+import { Flag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Admin } from "./admin/Admin";
 import { addTranslations, NS } from "./i18n";
-import { Flag } from "./icons";
 import { MISSIONS, pathLabel } from "./paths";
 import * as ui from "./ui";
 import { Talk } from "./voice/Talk";

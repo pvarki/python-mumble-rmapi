@@ -1,8 +1,8 @@
+import { Flag } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { NS } from "../i18n";
-import { Flag } from "../icons";
 import { pathLabel } from "../paths";
 import * as ui from "../ui";
 import { Frame } from "./Frame";

@@ -1,8 +1,8 @@
+import { CornerLeftUp, ListPlus, Lock, Plus, Upload } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
 import { NS, RAW } from "../i18n";
-import { CornerLeftUp, ListPlus, Lock, Plus, Upload } from "../icons";
 import * as ui from "../ui";
 import { MissionRow } from "./MissionRow";
 import { NetCard } from "./NetCard";

@@ -1,9 +1,9 @@
+import { X } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api } from "../api";
 import { NS } from "../i18n";
-import { X } from "../icons";
 import * as ui from "../ui";
 import { memberKey } from "./MemberChips";
 import { suggest, type NetNode } from "./tree";

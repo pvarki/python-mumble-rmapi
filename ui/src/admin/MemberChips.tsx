@@ -1,8 +1,8 @@
+import { Plus, X } from "lucide-react";
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
 import { NS, RAW } from "../i18n";
-import { Plus, X } from "../icons";
 import { pathLabel } from "../paths";
 import * as ui from "../ui";
 import type { TreeCtx } from "./types";

@@ -1,9 +1,9 @@
+import { Plus, Search, X } from "lucide-react";
 import { useRef, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { User } from "../api";
 import { NS } from "../i18n";
-import { Plus, Search, X } from "../icons";
 import * as ui from "../ui";
 import { MoreMenu, type MenuItem } from "./MoreMenu";
 import type { Derived } from "./tree";
