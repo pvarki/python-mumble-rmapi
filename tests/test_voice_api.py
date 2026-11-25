@@ -51,18 +51,43 @@ def client_fixture(pki: Pki, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     return client
 
 
+LAPTOP = {"browser": "laptop-browser-01"}
+PHONE = {"browser": "phone-browser-0002"}
+
+
 def _keys(client: TestClient) -> frozenset[str]:
     return frozenset(client.get("/api/v1/agent/state", headers=as_(AGENT)).json()["ticket_keys"])
 
 
 def test_ticket_binds_the_slot_to_the_verified_leaf(client: TestClient, pki: Pki) -> None:
     """The agent's published key verifies the ticket, which carries the caller's own leaf"""
-    response = client.post("/api/v1/voice/token", json={"slot": 3}, headers=edge(pki.alpha, pki.ca))
+    response = client.post("/api/v1/voice/token", json=LAPTOP, headers=edge(pki.alpha, pki.ca))
     assert response.status_code == 200
     body = response.json()
-    assert body["username"] == "ALPHA_1---web-3"
-    leaf = verify(body["ticket"], _keys(client), "ALPHA_1---web-3", time.time())
+    assert body["username"] == "ALPHA_1---web-1"
+    leaf = verify(body["ticket"], _keys(client), "ALPHA_1---web-1", time.time())
     assert leaf == pki.alpha.der
+
+
+def _username(client: TestClient, cert: Issued, browser: dict[str, str]) -> str:
+    response = client.post("/api/v1/voice/token", json=browser, headers=edge(cert))
+    assert response.status_code == 200
+    return str(response.json()["username"])
+
+
+def test_each_browser_keeps_its_own_slot(client: TestClient, pki: Pki) -> None:
+    """Two browsers of one callsign never share a slot, and a browser that comes back keeps its own"""
+    assert _username(client, pki.alpha, LAPTOP) == "ALPHA_1---web-1"
+    assert _username(client, pki.alpha, PHONE) == "ALPHA_1---web-2"
+    assert _username(client, pki.alpha, LAPTOP) == "ALPHA_1---web-1"
+
+
+def test_browser_id_counts_only_within_the_callsign(client: TestClient, pki: Pki) -> None:
+    """The callsign comes from the certificate, so another person's browser id moves nobody else"""
+    assert _username(client, pki.alpha, LAPTOP) == "ALPHA_1---web-1"
+    assert _username(client, pki.alpha, PHONE) == "ALPHA_1---web-2"
+    assert _username(client, issue("BRAVO 2", pki.ca), PHONE) == "BRAVO_2---web-1"
+    assert _username(client, pki.alpha, LAPTOP) == "ALPHA_1---web-1"
 
 
 @pytest.mark.parametrize(
@@ -76,28 +101,28 @@ def test_ticket_binds_the_slot_to_the_verified_leaf(client: TestClient, pki: Pki
 )
 def test_refuses_without_the_edge_and_a_certificate(client: TestClient, headers: dict[str, str]) -> None:
     """Only Traefik's forwarded certificate counts"""
-    assert client.post("/api/v1/voice/token", json={"slot": 1}, headers=headers).status_code == 403
+    assert client.post("/api/v1/voice/token", json=LAPTOP, headers=headers).status_code == 403
 
 
 def test_refuses_a_certificate_from_another_ca(client: TestClient) -> None:
     """A self-made CA's certificate for a known callsign is refused"""
     rogue = issue("Rogue CA", ca=True)
-    response = client.post("/api/v1/voice/token", json={"slot": 1}, headers=edge(issue("ALPHA 1", rogue)))
+    response = client.post("/api/v1/voice/token", json=LAPTOP, headers=edge(issue("ALPHA 1", rogue)))
     assert response.status_code == 403
 
 
 def test_refuses_unknown_revoked_and_disabled(client: TestClient, pki: Pki) -> None:
     """Tickets fail closed: the callsign must be known (404 tells the UI to say so), unrevoked and have voice on"""
     stranger = issue("CHARLIE 3", pki.ca)
-    assert client.post("/api/v1/voice/token", json={"slot": 1}, headers=edge(stranger)).status_code == 404
+    assert client.post("/api/v1/voice/token", json=LAPTOP, headers=edge(stranger)).status_code == 404
     bravo = issue("BRAVO 2", pki.ca)
-    assert client.post("/api/v1/voice/token", json={"slot": 1}, headers=edge(bravo)).status_code == 200
+    assert client.post("/api/v1/voice/token", json=LAPTOP, headers=edge(bravo)).status_code == 200
     client.post("/api/v1/users/promoted", json=user("ALPHA 1"), headers=as_(RMAPI))
     voice_off = client.put("/api/v1/admin/users/BRAVO 2/voice", json={"enabled": False}, headers=as_("ALPHA 1"))
     assert voice_off.status_code == 200
-    assert client.post("/api/v1/voice/token", json={"slot": 1}, headers=edge(bravo)).status_code == 403
+    assert client.post("/api/v1/voice/token", json=LAPTOP, headers=edge(bravo)).status_code == 403
     client.post("/api/v1/users/revoked", json=user("ALPHA 1"), headers=as_(RMAPI))
-    assert client.post("/api/v1/voice/token", json={"slot": 1}, headers=edge(pki.alpha)).status_code == 403
+    assert client.post("/api/v1/voice/token", json=LAPTOP, headers=edge(pki.alpha)).status_code == 403
 
 
 @pytest.mark.parametrize("content_type", ["text/plain", None])
@@ -106,13 +131,25 @@ def test_refuses_what_a_cross_site_page_can_send(client: TestClient, pki: Pki, c
     headers = {k: v for k, v in edge(pki.alpha).items() if k != "Content-Type"}
     if content_type:
         headers["Content-Type"] = content_type
-    response = client.post("/api/v1/voice/token", content=b'{"slot": 1}', headers=headers)
+    response = client.post("/api/v1/voice/token", content=b'{"browser": "laptop-browser-01"}', headers=headers)
     assert response.status_code == 422
 
 
-@pytest.mark.parametrize("body", [{"slot": 0}, {"slot": 10}, {"slot": 1, "username": "BRAVO_2---web-1"}, {}])
-def test_refuses_other_slots_and_fields(client: TestClient, pki: Pki, body: dict[str, object]) -> None:
-    """Only web-1 to web-9, and the caller cannot name anyone"""
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"browser": "a" * 15},
+        {"browser": "a" * 65},
+        {"browser": "laptop_browser_01"},
+        {"browser": "laptop-browser-01\n"},
+        {"browser": 1234567890123456},
+        {},
+        {"slot": 3},  # the old request, when each browser picked its own slot
+        LAPTOP | {"username": "BRAVO_2---web-1"},
+    ],
+)
+def test_refuses_bad_browser_ids_and_other_fields(client: TestClient, pki: Pki, body: dict[str, object]) -> None:
+    """A browser id is 16 to 64 letters, digits and dashes, and the caller cannot name a slot or anyone"""
     assert client.post("/api/v1/voice/token", json=body, headers=edge(pki.alpha)).status_code == 422
 
 
@@ -120,7 +157,7 @@ def test_no_bundle_no_tickets(tmp_path: Path, pki: Pki) -> None:
     """Without the CA bundle nothing can be checked, so nothing is minted"""
     settings = Settings(database=tmp_path / "db.sqlite", ca_bundle=tmp_path / "missing.pem", ui_dir=tmp_path / "x")
     client = TestClient(create_app(settings))
-    assert client.post("/api/v1/voice/token", json={"slot": 1}, headers=edge(pki.alpha)).status_code == 503
+    assert client.post("/api/v1/voice/token", json=LAPTOP, headers=edge(pki.alpha)).status_code == 503
 
 
 def test_restart_changes_the_etag(client: TestClient, tmp_path: Path, pki: Pki) -> None:

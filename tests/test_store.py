@@ -5,8 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from mumblermapi.channels import ChannelSpec
-from mumblermapi.store import Store, StoreError
+from mumblermapi.channels import MAX_DEPTH, ChannelSpec
+from mumblermapi.store import Channel, ChannelExists, Store, StoreError, TooDeep
+from mumblermapi.tickets import WEB_SLOTS
 
 
 @pytest.fixture(name="store")
@@ -45,7 +46,7 @@ def test_channel_tree_and_members(store: Store) -> None:
     assert [c.name for c in tree] == ["10", "20"]
     assert tree[0].children[0].name == "101"
     assert tree[0].children[0].members == ["ALPHA 1"]
-    with pytest.raises(StoreError):
+    with pytest.raises(ChannelExists):
         store.add_channel("10")
     with pytest.raises(StoreError):
         store.add_channel("x", parent=999)
@@ -63,6 +64,36 @@ def test_import_plan_is_idempotent(store: Store) -> None:
     assert store.import_plan(plan) == 4
     assert store.import_plan(plan) == 0
     assert not store.is_empty()
+
+
+def _chain(store: Store, depth: int) -> int:
+    """A net depth deep under nets of one each; returns its id"""
+    parent = 0
+    for _ in range(depth):
+        parent = store.add_channel("x", parent=parent)
+    return parent
+
+
+def _depth(channels: list[Channel]) -> int:
+    return 1 + max(_depth(c.children) for c in channels) if channels else 0
+
+
+def test_nets_nest_at_most_max_depth(store: Store) -> None:
+    """A net as deep as Murmur takes is stored; one level more is refused and changes nothing"""
+    deepest = _chain(store, MAX_DEPTH)
+    assert _depth(store.tree()) == MAX_DEPTH
+    before = store.version()
+    with pytest.raises(TooDeep, match=f"at most {MAX_DEPTH} deep"):
+        store.add_channel("y", parent=deepest)
+    assert store.version() == before
+    assert _depth(store.tree()) == MAX_DEPTH
+
+
+def test_import_under_a_net_too_deep(store: Store) -> None:
+    """A plan under the deepest net is refused as too deep, not mistaken for a net that exists"""
+    deepest = _chain(store, MAX_DEPTH)
+    with pytest.raises(TooDeep):
+        store.import_plan((ChannelSpec("y"),), deepest)
 
 
 def test_persists(tmp_path: Path) -> None:
@@ -103,7 +134,7 @@ def test_update_channel(tmp_path: Path) -> None:
     store.update_channel(ten, name="11")
     assert [(c.name, c.description) for c in store.tree()] == [("11", "Alfa-joukkue"), ("20", "")]
     assert store.version() == before + 2
-    with pytest.raises(StoreError):
+    with pytest.raises(ChannelExists):
         store.update_channel(ten, name="20")
     with pytest.raises(StoreError):
         store.update_channel(999, description="x")
@@ -220,3 +251,28 @@ def test_migrates_implicit_access(tmp_path: Path) -> None:
         ["invite", "inherit"],
         "open",
     )
+
+
+def test_web_slots_per_browser(tmp_path: Path) -> None:
+    """Each browser of a callsign gets its own slot and keeps it, also across a restart; no new version"""
+    store = Store(tmp_path / "db.sqlite")
+    before = store.version()
+    assert store.web_slot("ALPHA_1", "laptop-browser-01", 100.0) == 1
+    assert store.web_slot("ALPHA_1", "phone-browser-0002", 101.0) == 2
+    assert store.web_slot("ALPHA_1", "laptop-browser-01", 102.0) == 1
+    assert store.web_slot("BRAVO_2", "phone-browser-0002", 103.0) == 1  # callsigns do not share slots
+    assert store.version() == before
+    reopened = Store(tmp_path / "db.sqlite")
+    assert reopened.web_slot("ALPHA_1", "phone-browser-0002", 104.0) == 2
+    assert reopened.web_slot("ALPHA_1", "tablet-browser-03", 105.0) == 3
+
+
+def test_tenth_browser_takes_the_oldest_slot(store: Store) -> None:
+    """With all slots held, a new browser takes the one whose last ticket is oldest; a ticket refreshes it"""
+    for slot in WEB_SLOTS:
+        assert store.web_slot("ALPHA_1", f"browser-number-{slot:02}", 100.0 + slot) == slot
+    store.web_slot("ALPHA_1", "browser-number-01", 200.0)  # web-1 is used again, so web-2 is now the oldest
+    assert store.web_slot("ALPHA_1", "browser-number-10", 201.0) == 2
+    assert store.web_slot("ALPHA_1", "browser-number-10", 202.0) == 2
+    # The browser that lost its slot is a new browser now, and web-3 is the oldest
+    assert store.web_slot("ALPHA_1", "browser-number-02", 203.0) == 3

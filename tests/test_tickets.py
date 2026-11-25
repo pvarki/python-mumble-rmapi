@@ -6,7 +6,7 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from mumblermapi.identity import IdentityError
-from mumblermapi.tickets import TTL_SECONDS, _b64, is_web_slot, mint, public_key, verify, web_username
+from mumblermapi.tickets import TTL_SECONDS, WEB_SLOTS, _b64, is_web_slot, mint, public_key, verify, web_username
 
 NOW = 1_800_000_000.0
 LEAF = b"\x30\x82leaf-der"
@@ -84,7 +84,7 @@ def test_skips_malformed_keys(key: Ed25519PrivateKey) -> None:
 
 def test_web_slots() -> None:
     """web-1 to web-9 exist, whatever the case; nothing else is minted"""
-    assert web_username("ALPHA_1", 9) == "ALPHA_1---web-9"
+    assert [web_username("ALPHA_1", slot) for slot in WEB_SLOTS][-1] == "ALPHA_1---web-9"
     for bad in (0, 10, -1):
         with pytest.raises(ValueError):
             web_username("ALPHA_1", bad)

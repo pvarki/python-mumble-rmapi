@@ -34,20 +34,21 @@ class UserIds:
             raise ValueError(f"{self._path} gives one id to several names")
         return data
 
-    def _save(self) -> None:
+    def _save(self, by_name: dict[str, int]) -> None:
         tmp = self._path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(self._by_name, indent=1, sort_keys=True), encoding="utf-8")
+        tmp.write_text(json.dumps(by_name, indent=1, sort_keys=True), encoding="utf-8")
         os.replace(tmp, self._path)
 
     def get_or_assign(self, name: str) -> int:
-        """The name's id, assigning the next free one the first time"""
+        """The name's id, assigning the next free one the first time. The id is handed out only once saved, so a
+        failed save cannot give it to another name after a restart."""
         with self._lock:
             user_id = self._by_name.get(name)
             if user_id is None:
                 user_id = max(self._by_id, default=0) + 1
+                self._save({**self._by_name, name: user_id})
                 self._by_name[name] = user_id
                 self._by_id[user_id] = name
-                self._save()
             return user_id
 
     def id_for(self, name: str) -> int | None:

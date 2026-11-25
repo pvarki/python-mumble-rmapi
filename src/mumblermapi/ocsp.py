@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import logging
 import threading
 import time
@@ -10,7 +11,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta
 
 from cryptography import x509
-from cryptography.exceptions import InvalidSignature
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from cryptography.hazmat.primitives.serialization import Encoding
@@ -47,8 +48,8 @@ def http_post(url: str, body: bytes, timeout: float) -> bytes:
                 raise OcspUnavailable(f"OCSP responder answered HTTP {response.status}")
             data: bytes = response.read(MAX_RESPONSE_BYTES)
             return data
-    except OSError as exc:
-        raise OcspUnavailable(f"OCSP responder unreachable: {exc}") from exc
+    except (OSError, http.client.HTTPException) as exc:
+        raise OcspUnavailable(f"OCSP responder unreachable: {exc!r}") from exc
 
 
 def responder_url(cert: x509.Certificate) -> str | None:
@@ -101,7 +102,9 @@ class OcspChecker:
     """Asks the responder whether a certificate is revoked, caching answers.
 
     Revocations are issued only in rmapi. While the responder is unreachable nobody can revoke anything, so a
-    certificate that was answered "good" before stays good; one never seen before is refused.
+    certificate that was answered "good" before stays good; one never seen before is refused. A responder that
+    failed is left alone for retry_seconds, so that an outage costs one timeout, not one per login and per
+    connected user in the sweep.
     """
 
     def __init__(
@@ -110,14 +113,17 @@ class OcspChecker:
         url_override: str | None = None,
         cache_seconds: float = 300.0,
         timeout: float = 3.0,
+        retry_seconds: float = 10.0,
         fetch: Fetch = http_post,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._url_override = url_override
         self._cache_seconds = cache_seconds
         self._timeout = timeout
+        self._retry_seconds = retry_seconds
         self._fetch = fetch
         self._clock = clock
+        self._down_until: dict[str, float] = {}  # by responder URL
         self._good: dict[int, float] = {}
         self._revoked: set[int] = set()
         self._lock = threading.Lock()
@@ -151,27 +157,41 @@ class OcspChecker:
         url = self._url_override or responder_url(identity.leaf)
         if not url:
             raise OcspUnavailable("certificate names no OCSP responder")
+        if self._clock() < self._down_until.get(url, float("-inf")):
+            raise OcspUnavailable("OCSP responder failed moments ago")
         request = ocsp.OCSPRequestBuilder().add_certificate(identity.leaf, identity.issuer, hashes.SHA256()).build()
-        body = self._fetch(url, request.public_bytes(Encoding.DER), self._timeout)
         try:
-            response = ocsp.load_der_ocsp_response(body)
-        except ValueError as exc:
-            raise OcspUnavailable("unparseable OCSP response") from exc
-        if response.response_status != ocsp.OCSPResponseStatus.SUCCESSFUL:
-            raise OcspUnavailable(f"OCSP responder refused: {response.response_status.name}")
-        responder = _responder(response, identity.issuer)
-        _verify_signature(
-            responder.public_key(),
-            response.signature,
-            response.tbs_response_bytes,
-            response.signature_hash_algorithm,
-        )
-        for single in response.responses:
-            if single.serial_number != identity.leaf.serial_number:
-                continue
-            if single.this_update_utc > now + CLOCK_SKEW:
-                raise OcspUnavailable("OCSP response is from the future")
-            if single.next_update_utc is not None and single.next_update_utc < now - CLOCK_SKEW:
-                raise OcspUnavailable("OCSP response is stale")
-            return single.certificate_status
-        raise OcspUnavailable("OCSP response does not cover the certificate")
+            body = self._fetch(url, request.public_bytes(Encoding.DER), self._timeout)
+        except OcspUnavailable:
+            self._down_until[url] = self._clock() + self._retry_seconds
+            raise
+        try:
+            return _status(body, identity, now)
+        except (ValueError, TypeError, UnsupportedAlgorithm) as exc:
+            raise OcspUnavailable(f"undecodable OCSP response: {exc!r}") from exc
+
+
+def _status(body: bytes, identity: Identity, now: datetime) -> ocsp.OCSPCertStatus:
+    """The certificate's status in a verified, current response; raises OcspUnavailable"""
+    try:
+        response = ocsp.load_der_ocsp_response(body)
+    except ValueError as exc:
+        raise OcspUnavailable("unparseable OCSP response") from exc
+    if response.response_status != ocsp.OCSPResponseStatus.SUCCESSFUL:
+        raise OcspUnavailable(f"OCSP responder refused: {response.response_status.name}")
+    responder = _responder(response, identity.issuer)
+    _verify_signature(
+        responder.public_key(),
+        response.signature,
+        response.tbs_response_bytes,
+        response.signature_hash_algorithm,
+    )
+    for single in response.responses:
+        if single.serial_number != identity.leaf.serial_number:
+            continue
+        if single.this_update_utc > now + CLOCK_SKEW:
+            raise OcspUnavailable("OCSP response is from the future")
+        if single.next_update_utc is not None and single.next_update_utc < now - CLOCK_SKEW:
+            raise OcspUnavailable("OCSP response is stale")
+        return single.certificate_status
+    raise OcspUnavailable("OCSP response does not cover the certificate")

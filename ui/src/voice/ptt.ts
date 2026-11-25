@@ -1,4 +1,4 @@
-// The push-to-talk binding and this browser's slot, both remembered per browser. No imports, so
+// The push-to-talk binding and this browser's id, both remembered per browser. No imports, so
 // `node --test` can load this file directly.
 
 // A key by its physical position (KeyboardEvent.code), so the layout does not matter, or an extra mouse
@@ -11,7 +11,9 @@ export const DEFAULT_BINDING: Binding = { kind: "key", code: "Tab" };
 // Middle and the two side buttons; the primary and context buttons stay with the page
 export const MOUSE_BUTTONS = [1, 3, 4];
 const BINDING_KEY = "mumble.ptt";
-const SLOT_KEY = "mumble.webSlot";
+const BROWSER_KEY = "mumble.browser";
+// As mumblermapi's TicketRequest.browser accepts it
+const BROWSER_ID = /^[A-Za-z0-9-]{16,64}$/;
 
 // Storage can be missing or throw (private windows, blocked site data); the defaults then apply.
 type Store = Pick<Storage, "getItem" | "setItem">;
@@ -96,12 +98,12 @@ export const talksOn = (binding: Binding, e: KeyLike): boolean =>
 export const isButton = (binding: Binding, button: number): boolean =>
   binding.kind === "mouse" && binding.button === button;
 
-// Which of web-1 to web-9 this browser uses. Each browser keeps its own, so a laptop and a phone can be in
-// voice at once; a second tab in the same browser takes over from the first.
-export function loadSlot(store: Store | null, random: () => number): number {
-  const slot = Number(read(store, SLOT_KEY));
-  if (Number.isInteger(slot) && slot >= 1 && slot <= 9) return slot;
-  const fresh = 1 + Math.floor(random() * 9);
-  write(store, SLOT_KEY, String(fresh));
-  return fresh;
+// A random id this browser keeps. mumblermapi gives each of a person's browsers its own web slot by it, so a
+// laptop and a phone can be in voice at once; a second tab in the same browser takes over from the first.
+export function loadBrowser(store: Store | null, fresh: () => string): string {
+  const stored = read(store, BROWSER_KEY);
+  if (stored !== null && BROWSER_ID.test(stored)) return stored;
+  const id = fresh();
+  write(store, BROWSER_KEY, id);
+  return id;
 }

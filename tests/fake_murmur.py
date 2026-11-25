@@ -7,12 +7,32 @@ from types import ModuleType, SimpleNamespace
 from typing import Any
 
 
-class InvalidSessionException(Exception):
+class IceException(Exception):
+    """Ice.Exception, which every error over Ice derives from"""
+
+
+class MemoryLimitException(IceException):
+    """Ice's: a message is over Ice.MessageSizeMax"""
+
+
+class UnknownUserException(IceException):
+    """Ice's: the servant raised an exception its operation does not declare"""
+
+
+class InvalidSessionException(IceException):
     """Murmur's: the session is gone"""
 
 
-class InvalidChannelException(Exception):
+class InvalidChannelException(IceException):
     """Murmur's: the channel is gone"""
+
+
+class NestingLimitException(IceException):
+    """Murmur's: the channel would nest past channelnestinglimit"""
+
+
+class InvalidSecretException(IceException):
+    """Murmur's: the Ice secret is wrong"""
 
 
 class ServerAuthenticator:
@@ -44,10 +64,16 @@ class Group(SimpleNamespace):
         )  # fmt: skip
 
 
-# Stands in for the MumbleServer module that Ice generates from the slice
+# Stand in for the Ice module and the MumbleServer module that Ice generates from the slice
+ICE = ModuleType("Ice")
+ICE.Exception = IceException  # type: ignore[attr-defined]
+ICE.MemoryLimitException = MemoryLimitException  # type: ignore[attr-defined]
+ICE.UnknownUserException = UnknownUserException  # type: ignore[attr-defined]
 MUMBLE = ModuleType("MumbleServer")
 MUMBLE.InvalidSessionException = InvalidSessionException  # type: ignore[attr-defined]
 MUMBLE.InvalidChannelException = InvalidChannelException  # type: ignore[attr-defined]
+MUMBLE.NestingLimitException = NestingLimitException  # type: ignore[attr-defined]
+MUMBLE.InvalidSecretException = InvalidSecretException  # type: ignore[attr-defined]
 MUMBLE.ServerAuthenticator = ServerAuthenticator  # type: ignore[attr-defined]
 MUMBLE.UserInfo = SimpleNamespace(UserName=0)  # type: ignore[attr-defined]
 MUMBLE.ACL = ACL  # type: ignore[attr-defined]
@@ -64,6 +90,7 @@ class FakeServer:
     listeners: dict[int, list[int]] = field(default_factory=dict)
     certificates: dict[int, list[bytes]] = field(default_factory=dict)
     log: list[str] = field(default_factory=list)
+    nesting_limit: int = 10  # Murmur's default channelnestinglimit
 
     def __post_init__(self) -> None:
         self.channels.setdefault(
@@ -81,6 +108,14 @@ class FakeServer:
         """A user logs in"""
         self.users[session] = SimpleNamespace(session=session, name=name, channel=channel, userid=userid)
 
+    def level(self, channel_id: int) -> int:
+        """How far below the root a channel is; the root is level 0"""
+        level = 0
+        while channel_id != 0:
+            channel_id = self.channels[channel_id].parent
+            level += 1
+        return level
+
     def id_of(self, path: str) -> int:
         """Channel id by path, e.g. "/Missions/RECON" """
         channel_id = 0
@@ -93,6 +128,11 @@ class FakeServer:
         return dict(self.channels)
 
     def addChannel(self, name: str, parent: int) -> int:
+        if parent not in self.channels:
+            raise InvalidChannelException()
+        # Server::canNest, which Murmur checks over Ice as well as for clients
+        if self.level(parent) >= self.nesting_limit:
+            raise NestingLimitException()
         channel_id = max(self.channels) + 1
         self.channel(channel_id, parent, name)
         return channel_id
@@ -110,6 +150,8 @@ class FakeServer:
         self.channels[state.id] = state
 
     def removeChannel(self, channel_id: int) -> None:
+        if channel_id not in self.channels:
+            raise InvalidChannelException()
         parent = self.channels[channel_id].parent
         gone = {channel_id}
         while more := {c.id for c in self.channels.values() if c.parent in gone} - gone:
@@ -152,10 +194,12 @@ class FakeServer:
 
     def getListeningUsers(self, channel_id: int) -> list[int]:
         if channel_id not in self.channels:
-            raise InvalidChannelException()
+            raise UnknownUserException()  # Murmur's InvalidChannelException, which the slice does not declare
         return list(self.listeners.get(channel_id, []))
 
     def stopListening(self, session: int, channel_id: int) -> None:
+        if session not in self.users or channel_id not in self.channels:
+            raise UnknownUserException()  # as in getListeningUsers
         self.listeners[channel_id].remove(session)
         self.log.append(f"unlisten {session} {channel_id}")
 

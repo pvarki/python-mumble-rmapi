@@ -8,6 +8,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
+import aiohttp
 import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestServer
@@ -50,6 +51,46 @@ def test_parsing() -> None:
     assert mission_names(MISSIONS) == ["RECON", "LOCKED", "NOBODY"]
     assert mission_names({"data": [{"name": "RECON\n"}]}) == []  # "$" alone would let the newline through
     assert subscribers(SUBSCRIBERS["RECON"]) == {"VOICE1", "VOICE3"}
+    assert subscribers({"data": ["VOICE9", {"username": "VOICE1"}]}) == {"VOICE1"}
+    odd: object
+    for odd in ([], {"data": {}}, "junk"):
+        with pytest.raises(TypeError):
+            mission_names(odd)
+
+
+def test_one_unreadable_mission_holds_up_no_other() -> None:
+    """A mission whose subscribers cannot be read now keeps the last known; the others are read as usual"""
+
+    names = ["RECON", "ODIN", "THOR", "DEEP", "SLOW"]
+
+    async def missions(_: web.Request) -> web.Response:
+        return web.json_response({"data": [{"name": name} for name in names]})
+
+    async def roles(request: web.Request) -> web.Response:
+        name = request.match_info["name"]
+        if name == "SLOW":
+            await asyncio.sleep(1)
+        if name == "DEEP":
+            return web.Response(text="[" * 100_000)  # nested past Python's recursion limit
+        return web.json_response(SUBSCRIBERS[name]) if name == "RECON" else web.Response(text="<html>")
+
+    async def read() -> dict[str, frozenset[str]]:
+        app = web.Application()
+        app.router.add_get("/Marti/api/missions", missions)
+        app.router.add_get("/Marti/api/missions/{name}/subscriptions/roles", roles)
+        server = TestServer(app)
+        await server.start_server()
+        try:
+            settings = TakSettings(
+                tak_url=str(server.make_url("")).rstrip("/"), tak_server_name="tak.example.fi", cn="mumble.example.fi"
+            )
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=0.2)) as session:
+                return await tak.read_missions(session, settings, False, known)
+        finally:
+            await server.close()
+
+    known = {name: frozenset({f"VOICE{i}"}) for i, name in enumerate(("ODIN", "DEEP", "SLOW"))}
+    assert asyncio.run(read()) == {"RECON": frozenset({"VOICE1", "VOICE3"}), **known}
 
 
 def test_needs_enrolment(tmp_path: Path, pki: Pki) -> None:

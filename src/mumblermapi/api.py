@@ -132,11 +132,16 @@ class VoiceSetting(BaseModel):
 
 
 class TicketRequest(BaseModel):
-    """Which browser slot to log in. A JSON body, so a cross-site form cannot send it."""
+    """Which browser is joining. A JSON body, so a cross-site form cannot send it."""
 
     model_config = ConfigDict(extra="forbid")
 
-    slot: int = Field(ge=1, le=9, description="This browser's slot, web-1 to web-9; each browser keeps its own")
+    # Only a hint within the caller's own callsign, which comes from the certificate: a made-up id can only move
+    # that person's own browsers.
+    browser: str = Field(
+        pattern=r"^[A-Za-z0-9-]{16,64}$",
+        description="A random id this browser keeps, so each of the caller's browsers gets its own web slot",
+    )
 
 
 class Ticket(BaseModel):
@@ -145,7 +150,7 @@ class Ticket(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ticket: str = Field(description="The gateway's Murmur password for this login; valid for 60 s")
-    username: str = Field(description="The Mumble username it logs in, <callsign>---web-<slot>")
+    username: str = Field(description="The Mumble username it logs in: <callsign>---web-<this browser's slot>")
 
 
 class PresenceEntry(BaseModel):
@@ -531,10 +536,11 @@ def voice_ticket(choice: TicketRequest, request: Request, store: StoreDep) -> Ti
         raise _refuse(404, "voice does not know this callsign yet", identity.callsign)
     if record.revoked or record.voice_disabled:
         raise _refuse(403, "voice is not enabled for this callsign in Deploy App", identity.callsign)
-    username = web_username(normalize_callsign(identity.callsign), choice.slot)
+    callsign, now = normalize_callsign(identity.callsign), time.time()  # wall-clock: slots outlive a restart
+    username = web_username(callsign, store.web_slot(callsign, choice.browser, now))
     LOGGER.info("Voice ticket for %s", username)
     leaf = identity.leaf.public_bytes(Encoding.DER)
-    return Ticket(ticket=mint(request.app.state.ticket_key, username, leaf, time.time()), username=username)
+    return Ticket(ticket=mint(request.app.state.ticket_key, username, leaf, now), username=username)
 
 
 public = APIRouter()

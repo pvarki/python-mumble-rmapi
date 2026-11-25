@@ -1,7 +1,13 @@
 // Voice in the browser: join a net and talk with push-to-talk, on a laptop or a phone (VOICE-PLAN §4.10).
 // Push-to-talk is the big button or a key or mouse button the user picks; it works only while this tab has
 // focus, and losing focus lets go.
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -17,7 +23,7 @@ import {
   isButton,
   isKey,
   loadBinding,
-  loadSlot,
+  loadBrowser,
   saveBinding,
   talksOn,
 } from "./ptt";
@@ -331,6 +337,13 @@ export function Talk() {
   const s = useSyncExternalStore(client.subscribe, client.getSnapshot);
   const [binding, setBinding] = useState(() => loadBinding(storage()));
   const [choosing, setChoosing] = useState(false);
+  // This browser's id, read on the first click (not while rendering) and kept for the page even where storage
+  // throws, so every join from this page logs in the same slot
+  const browser = useRef<string | null>(null);
+  const connect = () => {
+    browser.current ??= loadBrowser(storage(), () => crypto.randomUUID());
+    void client.connect(browser.current);
+  };
   const chosen = useCallback((next: Binding | null) => {
     if (next) {
       saveBinding(storage(), next);
@@ -363,9 +376,7 @@ export function Talk() {
             type="button"
             aria-disabled={s.phase === "connecting"}
             className={ui.cx(ui.BTN, ui.BTN_PRIMARY_V)}
-            onClick={() =>
-              void client.connect(loadSlot(storage(), Math.random))
-            }
+            onClick={connect}
           >
             {s.phase === "connecting" ? (
               <Loader className={ui.LOADER} />
