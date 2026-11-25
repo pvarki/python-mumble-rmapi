@@ -4,11 +4,13 @@ import { useTranslation } from "react-i18next";
 
 import { Button } from "../components/ui/button";
 import { NS, RAW } from "../i18n";
+import { cn } from "../lib/utils";
 import * as ui from "../ui";
+import { useFitsScreen } from "./hooks/useWide";
 import type { TreeCtx } from "./types";
 
-// The same details in two frames: a sticky panel beside the list on a wide workspace, or the net's own
-// screen with a sticky back bar on a narrow one. The title takes focus once, right after the net was opened.
+// The same details in two frames: a panel beside the list on a wide workspace, or the net's own screen with a
+// sticky back bar on a narrow one. The title takes focus once, right after the net was opened.
 export function Frame({
   ctx,
   netKey,
@@ -31,12 +33,25 @@ export function Frame({
   const titleId = useId();
   const section = useRef<HTMLElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
+  // The panel scrolls with the page, and stays in view only while that cannot hide its end
+  const sticky = useFitsScreen(ctx.wide ? section : null);
 
   useEffect(() => {
     if (!title.current || !ctx.takeTitleFocus(netKey)) return;
     if (!ctx.wide) section.current?.scrollIntoView({ block: "start" });
     title.current.focus({ preventScroll: true });
   });
+
+  // A panel that has outgrown the screen moves up with the list, so what has focus in it is brought back to view
+  useEffect(() => {
+    const focused = document.activeElement;
+    if (
+      !sticky &&
+      focused instanceof HTMLElement &&
+      section.current?.contains(focused)
+    )
+      focused.scrollIntoView({ block: "nearest" });
+  }, [sticky]);
 
   const heading = (
     <h2
@@ -58,8 +73,7 @@ export function Frame({
         id={ctx.detailsId}
         aria-labelledby={titleId}
         data-testid={testId}
-        className={ui.SIDE}
-        style={ui.SIDE_STYLE}
+        className={cn(ui.SIDE, sticky && ui.SIDE_STICKY)}
       >
         <div className={ui.DETAIL_HEAD}>
           {heading}

@@ -1,5 +1,5 @@
 // An open net: beside the list or its own screen, focus after it goes away, and its confirmations
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { Admin } from "../src/admin/Admin";
@@ -36,6 +36,39 @@ describe("an open net", () => {
     fireEvent.keyDown(panel, { key: "Escape" });
     expect(screen.queryByTestId("net-panel")).toBeNull();
     expect(document.activeElement).toBe(row("20"));
+  });
+
+  it("has no scroll of its own, and stays in view beside the list while it fits on screen", async () => {
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(500);
+    render(<Admin />);
+    await settle();
+
+    fireEvent.click(row("20"));
+    const panel = screen.getByTestId("net-panel");
+    expect(panel.classList).toContain("sticky");
+    expect(panel.className).not.toMatch(/overflow/);
+    expect(panel.style.maxHeight).toBe("");
+  });
+
+  it("scrolls with the page once taller than the screen, keeping its focus in view", async () => {
+    const height = vi
+      .spyOn(HTMLElement.prototype, "offsetHeight", "get")
+      .mockReturnValue(900);
+    render(<Admin />);
+    await settle();
+
+    fireEvent.click(row("20"));
+    const panel = screen.getByTestId("net-panel");
+    const heading = within(panel).getByRole("heading");
+    expect(panel.classList).not.toContain("sticky");
+    expect(document.activeElement).toBe(heading);
+    const scrolled = vi.mocked(Element.prototype.scrollIntoView).mock;
+    expect(scrolled.lastCall).toEqual([{ block: "nearest" }]);
+    expect(scrolled.contexts[scrolled.contexts.length - 1]).toBe(heading);
+
+    height.mockReturnValue(500);
+    act(() => window.dispatchEvent(new Event("resize")));
+    expect(panel.classList).toContain("sticky");
   });
 
   it("is its own screen on a narrow one, and Back returns to its row", async () => {

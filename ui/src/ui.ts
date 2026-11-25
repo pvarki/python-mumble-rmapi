@@ -104,10 +104,10 @@ export const ICON_META = "size-3.5 shrink-0";
 export const ICON = "size-4 shrink-0";
 export const FLAG = "size-3.5 shrink-0 text-muted-foreground";
 
-// The open net's details: a sticky panel beside the list, capped at the visible height of rmui's <main>
+// The open net's details: a panel beside the list, without a scroll of its own
 export const SIDE =
-  "sticky top-4 w-80 shrink-0 self-start space-y-3 overflow-y-auto rounded-lg border border-border bg-card p-4 text-sm";
-export const SIDE_STYLE = { maxHeight: "calc(100dvh - 6rem)" } as const;
+  "w-80 shrink-0 self-start space-y-3 rounded-lg border border-border bg-card p-4 text-sm";
+export const SIDE_STICKY = "sticky top-4";
 export const DETAIL_HEAD = "flex items-start gap-2";
 export const DETAIL_TITLE = "min-w-0 flex-1 break-words outline-none";
 export const TITLE_PATH = "block truncate text-xs text-muted-foreground";
