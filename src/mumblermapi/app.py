@@ -33,7 +33,7 @@ class UiFiles(StaticFiles):
 def create_app(settings: Settings | None = None) -> FastAPI:
     """The FastAPI app"""
     settings = settings or Settings.from_env()
-    store = Store(engine(settings.database.url))
+    store = Store(engine(settings.database.url), settings.sqlite_file)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:

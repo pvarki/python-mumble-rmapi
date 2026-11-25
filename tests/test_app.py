@@ -23,6 +23,7 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "MUMBLERMAPI_DATABASE_NAME": "voice",
         "MUMBLERMAPI_DATABASE_USER": "voiceapi",
         "MUMBLERMAPI_DATABASE_PASSWORD": "secret",  # pragma: allowlist secret
+        "MUMBLERMAPI_SQLITE_FILE": "/d/old.db",
         "MUMBLERMAPI_TEMPLATES_DIR": "/t",
         "MUMBLERMAPI_UI_DIR": "/u",
         "MUMBLERMAPI_RMAPI_IDENTITY": "rm",
@@ -38,6 +39,7 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
             user="voiceapi",
             password="secret",  # pragma: allowlist secret
         ),
+        sqlite_file=Path("/d/old.db"),
         templates_dir=Path("/t"),
         ui_dir=Path("/u"),
         rmapi_identity="rm",

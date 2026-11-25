@@ -21,6 +21,7 @@ class Settings(BaseModel):
     """Where things are and who the peers are; from the environment and the product manifest"""
 
     database: DatabaseSettings = DatabaseSettings()
+    sqlite_file: Path = Path("/data/mumblermapi.db")  # the store of earlier releases, copied once
     templates_dir: Path = Path("/templates")  # channel plan templates an admin may choose to apply
     ui_dir: Path = Path("/ui")  # the built UI remote, served at UI_PATH when present
     tak: TakSettings | None = None  # where to read missions from; None leaves Missions/ empty
@@ -42,6 +43,7 @@ class Settings(BaseModel):
         rmapi_identity = kraftwerk.value(manifest, "rasenmaeher", "certcn") or cls().rmapi_identity
         return cls(
             database=DatabaseSettings.from_env(env),
+            sqlite_file=Path(env.get("MUMBLERMAPI_SQLITE_FILE", cls().sqlite_file)),
             templates_dir=Path(env.get("MUMBLERMAPI_TEMPLATES_DIR", cls().templates_dir)),
             ui_dir=Path(env.get("MUMBLERMAPI_UI_DIR", cls().ui_dir)),
             tak=TakSettings.from_env(env, manifest),
