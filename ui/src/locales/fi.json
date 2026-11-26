@@ -117,8 +117,7 @@
     "connecting": "Yhdistetään…",
     "connectedAs": "Yhdistetty: {{name}}",
     "leave": "Poistu",
-    "inNet": "Verkossa: {{net}}",
-    "pickNet": "Valitse verkko alta.",
+    "pickNet": "Valitse verkko",
     "listenOnly": "Tässä verkossa voit vain kuunnella.",
     "denied": "Et pääse tähän verkkoon.",
     "hold": "Pidä painettuna ja puhu",
@@ -133,7 +132,7 @@
     "pressKey": "Paina haluamaasi näppäintä tai hiiren sivupainiketta (Esc peruu)",
     "inThisNet": "Verkossa nyt",
     "web": "selain",
-    "nets": "Puheverkot",
+    "net": "Puheverkko",
     "people_one": "{{count}} henkilö",
     "people_other": "{{count}} henkilöä",
     "group": {

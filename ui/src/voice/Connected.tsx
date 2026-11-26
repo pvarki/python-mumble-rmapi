@@ -6,12 +6,21 @@ import { StatusDot } from "@/components/StatusDot";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { NS, RAW } from "../i18n";
 import { cn } from "../lib/utils";
 import * as ui from "../ui";
 import type { Snapshot, VoiceClient } from "./client";
 import { KeyLine } from "./KeyLine";
-import { callsignOf, isBrowser, netPath, netRows } from "./nets";
+import { callsignOf, isBrowser, netGroups, netPath, netRows } from "./nets";
 import type { Binding } from "./ptt";
 
 // Held down with a thumb or a whole hand: no selection, callout or scrolling may start from it
@@ -45,7 +54,7 @@ export function Connected({
     t(`talk.group.${group}`, { defaultValue: group }),
     ...rest,
   ].join(" › ");
-  const rows = netRows(s.nets, s.people);
+  const groups = netGroups(netRows(s.nets, s.people));
   const around = [...s.people.values()]
     .filter((p) => me && p.channel === me.channel && me.channel !== 0)
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -75,9 +84,42 @@ export function Connected({
         </Button>
       </div>
 
-      <p className={ui.TALK_HERE}>
-        {here ? t("talk.inNet", { net: hereLabel, ...RAW }) : t("talk.pickNet")}
-      </p>
+      <Select
+        value={me && here ? String(me.channel) : ""}
+        onValueChange={(id) => client.join(Number(id))}
+      >
+        <SelectTrigger className={ui.NET_PICK} aria-label={t("talk.net")}>
+          <SelectValue placeholder={t("talk.pickNet")}>{hereLabel}</SelectValue>
+        </SelectTrigger>
+        <SelectContent style={ui.NET_LIST_STYLE}>
+          {groups.map((group) => (
+            <SelectGroup key={group.id}>
+              <SelectLabel>
+                {t(`talk.group.${group.name}`, { defaultValue: group.name })}
+              </SelectLabel>
+              {group.rows.map((row) => (
+                <SelectItem
+                  key={row.id}
+                  value={String(row.id)}
+                  disabled={!row.joinable}
+                  textValue={row.name}
+                  className={ui.NET_OPTION}
+                >
+                  {Array.from({ length: row.depth - 1 }, (_, i) => (
+                    <span key={i} className={ui.INDENT} />
+                  ))}
+                  <span className={ui.NAME_SUB}>{row.name}</span>
+                  {row.count > 0 && (
+                    <span className={ui.MUTED_XS}>
+                      {t("talk.people", { count: row.count })}
+                    </span>
+                  )}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          ))}
+        </SelectContent>
+      </Select>
       {me?.suppress && <p className={ui.MUTED_XS}>{t("talk.listenOnly")}</p>}
       {s.denied !== null && (
         <Alert variant="destructive">
@@ -109,40 +151,6 @@ export function Connected({
           ))}
         </div>
       )}
-
-      <nav aria-label={t("talk.nets")} className={ui.CARD}>
-        {rows.map((row) =>
-          row.depth === 0 ? (
-            <h3 key={row.id} className={ui.HEADING}>
-              {t(`talk.group.${row.name}`, { defaultValue: row.name })}
-            </h3>
-          ) : (
-            <button
-              key={row.id}
-              type="button"
-              disabled={!row.joinable}
-              aria-current={me?.channel === row.id ? "true" : undefined}
-              className={cn(
-                ui.TALK_ROW,
-                me?.channel === row.id ? ui.ROW_ON : ui.ROW_IDLE,
-                !row.joinable && ui.ROW_CONTEXT,
-              )}
-              onClick={() => client.join(row.id)}
-            >
-              {me?.channel === row.id && <span className={ui.SEL_BAR} />}
-              {Array.from({ length: row.depth - 1 }, (_, i) => (
-                <span key={i} className={ui.INDENT} />
-              ))}
-              <span className={ui.NAME_SUB}>{row.name}</span>
-              {row.count > 0 && (
-                <span className={ui.TALK_COUNT}>
-                  {t("talk.people", { count: row.count })}
-                </span>
-              )}
-            </button>
-          ),
-        )}
-      </nav>
 
       <div className={ui.TALK_PTT_BAR}>
         <p className={ui.TALK_SPEAKING} aria-live="polite">

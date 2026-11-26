@@ -2,7 +2,13 @@
 import { describe, expect, it } from "vitest";
 
 import type { Net, Person } from "../src/voice/client";
-import { callsignOf, isBrowser, netPath, netRows } from "../src/voice/nets";
+import {
+  callsignOf,
+  isBrowser,
+  netGroups,
+  netPath,
+  netRows,
+} from "../src/voice/nets";
 
 const net = (
   id: number,
@@ -69,6 +75,20 @@ describe("netRows", () => {
   });
   it("is empty before Murmur has sent anything", () => {
     expect(netRows(new Map(), new Map())).toEqual([]);
+  });
+});
+
+describe("netGroups", () => {
+  it("puts each net under the top-level group above it, keeping the order", () => {
+    const groups = netGroups(netRows(NETS, PEOPLE));
+    expect(groups.map((g) => [g.name, g.rows.map((r) => r.name)])).toEqual([
+      ["Units", ["00 Tehtäväkanavat", "00A TIKE", "2", "10"]],
+      ["Missions", ["Guard"]],
+      ["Extra", ["x"]],
+    ]);
+  });
+  it("is empty without rows", () => {
+    expect(netGroups([])).toEqual([]);
   });
 });
 

@@ -117,8 +117,7 @@
     "connecting": "Connecting…",
     "connectedAs": "Connected: {{name}}",
     "leave": "Leave",
-    "inNet": "In net: {{net}}",
-    "pickNet": "Pick a net below.",
+    "pickNet": "Pick a net",
     "listenOnly": "You can only listen in this net.",
     "denied": "You may not enter that net.",
     "hold": "Hold and talk",
@@ -133,7 +132,7 @@
     "pressKey": "Press the key or side mouse button you want (Esc cancels)",
     "inThisNet": "In this net now",
     "web": "browser",
-    "nets": "Voice nets",
+    "net": "Voice net",
     "people_one": "{{count}} person",
     "people_other": "{{count}} people",
     "group": {

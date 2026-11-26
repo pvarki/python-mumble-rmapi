@@ -58,15 +58,17 @@ export function usePushToTalk(
     const hidden = () => {
       if (document.hidden) client.talk(false);
     };
-    window.addEventListener("keydown", keyDown);
-    window.addEventListener("keyup", keyUp);
+    // Capture, so the bound key's preventDefault comes before any focused control acts on it: the net picker's
+    // typeahead would switch nets on a letter or digit, and Space would open it
+    window.addEventListener("keydown", keyDown, true);
+    window.addEventListener("keyup", keyUp, true);
     window.addEventListener("mousedown", mouseDown);
     window.addEventListener("mouseup", mouseUp);
     window.addEventListener("blur", letGo);
     document.addEventListener("visibilitychange", hidden);
     return () => {
-      window.removeEventListener("keydown", keyDown);
-      window.removeEventListener("keyup", keyUp);
+      window.removeEventListener("keydown", keyDown, true);
+      window.removeEventListener("keyup", keyUp, true);
       window.removeEventListener("mousedown", mouseDown);
       window.removeEventListener("mouseup", mouseUp);
       window.removeEventListener("blur", letGo);

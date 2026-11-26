@@ -117,8 +117,7 @@
     "connecting": "Ansluter…",
     "connectedAs": "Ansluten: {{name}}",
     "leave": "Lämna",
-    "inNet": "I nätet: {{net}}",
-    "pickNet": "Välj ett nät nedan.",
+    "pickNet": "Välj ett nät",
     "listenOnly": "I det här nätet kan du bara lyssna.",
     "denied": "Du får inte gå in i det här nätet.",
     "hold": "Håll in och tala",
@@ -133,7 +132,7 @@
     "pressKey": "Tryck på önskad tangent eller musens sidoknapp (Esc avbryter)",
     "inThisNet": "I nätet nu",
     "web": "webbläsare",
-    "nets": "Röstnät",
+    "net": "Röstnät",
     "people_one": "{{count}} person",
     "people_other": "{{count}} personer",
     "group": {

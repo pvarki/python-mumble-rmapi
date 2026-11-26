@@ -188,7 +188,12 @@ export const TALK = "space-y-3 rounded-lg border border-border bg-card p-4";
 export const TALK_TITLE = "text-base font-semibold";
 export const TALK_STATUS =
   "flex flex-wrap items-center justify-between gap-2 text-sm";
-export const TALK_HERE = "text-sm font-medium";
+// The net picker: the joined net, and a list capped so it never covers the whole screen
+export const NET_PICK = "w-full";
+export const NET_LIST_STYLE = {
+  maxHeight: "min(50vh, var(--radix-select-content-available-height))",
+} as const;
+export const NET_OPTION = "min-h-11";
 export const TALK_DETAIL = "block text-xs text-muted-foreground";
 export const TALK_KEY =
   "flex flex-wrap items-center gap-2 text-xs text-muted-foreground";
@@ -197,11 +202,8 @@ export const TALK_PTT = `flex w-full select-none flex-col items-center justify-c
 export const TALK_PTT_OFF = "border-primary bg-primary/10 text-primary";
 export const TALK_PTT_ON = "border-primary bg-primary text-primary-foreground";
 export const TALK_PTT_ICON = "size-8";
-// Stays at the bottom of the screen while the net list scrolls under it, so talking never needs a scroll back
+// Stays at the bottom of the screen while a long list of people in the net scrolls under it
 export const TALK_PTT_BAR = "sticky bottom-0 z-10 space-y-2 bg-card py-2";
 // Keeps its line when nobody talks, so the button under a thumb never moves
 export const TALK_SPEAKING =
   "flex min-h-4 items-center gap-1.5 text-xs text-green-600";
-export const TALK_ROW = `relative flex h-11 w-full items-center gap-2 px-3 text-left text-sm ${DISABLED} ${FOCUS_IN}`;
-export const TALK_COUNT =
-  "ml-auto shrink-0 text-xs tabular-nums text-muted-foreground";
