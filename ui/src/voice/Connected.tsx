@@ -2,7 +2,12 @@ import { AlertCircle, Mic } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 
+import { StatusDot } from "@/components/StatusDot";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { Button } from "../components/ui/button";
 import { NS, RAW } from "../i18n";
+import { cn } from "../lib/utils";
 import * as ui from "../ui";
 import type { Snapshot, VoiceClient } from "./client";
 import { KeyLine } from "./KeyLine";
@@ -54,19 +59,20 @@ export function Connected({
     <>
       <div className={ui.TALK_STATUS}>
         <span className={ui.YOU_STATUS}>
-          <span className={ui.DOT_ON} />
+          <StatusDot state="on" />
           {t("talk.connectedAs", {
             name: me ? callsignOf(me.name) : "",
             ...RAW,
           })}
         </span>
-        <button
+        <Button
           type="button"
-          className={ui.cx(ui.BTN_SM, ui.SM_GHOST)}
+          variant="ghost"
+          size="sm"
           onClick={() => client.disconnect()}
         >
           {t("talk.leave")}
-        </button>
+        </Button>
       </div>
 
       <p className={ui.TALK_HERE}>
@@ -74,29 +80,32 @@ export function Connected({
       </p>
       {me?.suppress && <p className={ui.MUTED_XS}>{t("talk.listenOnly")}</p>}
       {s.denied !== null && (
-        <div role="alert" className={ui.cx(ui.NOTICE, ui.NOTICE_ERR)}>
-          <AlertCircle className={ui.cx(ui.NOTICE_ICON, ui.NOTICE_ICON_ERR)} />
-          <p className={ui.NOTICE_TEXT}>{s.denied || t("talk.denied")}</p>
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle />
+          {/* A block, not a grid, so that a long word wraps */}
+          <AlertDescription className="block min-w-0 break-words text-foreground">
+            {s.denied || t("talk.denied")}
+          </AlertDescription>
+        </Alert>
       )}
 
       {around.length > 0 && (
         <div className={ui.CHIPS_ROW} aria-label={t("talk.inThisNet")}>
           {around.map((p) => (
-            <span key={p.session} className={ui.CHIP}>
-              <span
-                className={
+            <Badge key={p.session}>
+              <StatusDot
+                state={
                   s.talking.has(p.session) ||
                   (p.session === s.self && s.transmitting)
-                    ? ui.DOT_ON
-                    : ui.DOT_OFF
+                    ? "on"
+                    : "off"
                 }
               />
               {callsignOf(p.name)}
               {isBrowser(p.name) && (
                 <span className={ui.MUTED_XS}>{t("talk.web")}</span>
               )}
-            </span>
+            </Badge>
           ))}
         </div>
       )}
@@ -113,7 +122,7 @@ export function Connected({
               type="button"
               disabled={!row.joinable}
               aria-current={me?.channel === row.id ? "true" : undefined}
-              className={ui.cx(
+              className={cn(
                 ui.TALK_ROW,
                 me?.channel === row.id ? ui.ROW_ON : ui.ROW_IDLE,
                 !row.joinable && ui.ROW_CONTEXT,
@@ -139,7 +148,7 @@ export function Connected({
         <p className={ui.TALK_SPEAKING} aria-live="polite">
           {speaking.length > 0 && (
             <>
-              <span className={ui.DOT_ON} />
+              <StatusDot state="on" />
               {t("talk.speaking", { names: speaking.join(", "), ...RAW })}
             </>
           )}
@@ -148,7 +157,7 @@ export function Connected({
           type="button"
           aria-pressed={s.transmitting}
           disabled={!here}
-          className={ui.cx(
+          className={cn(
             ui.TALK_PTT,
             s.transmitting ? ui.TALK_PTT_ON : ui.TALK_PTT_OFF,
           )}

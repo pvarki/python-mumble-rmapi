@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { NS, RAW } from "../i18n";
+import { cn } from "../lib/utils";
 import * as ui from "../ui";
 import { takeAsked, type FocusTarget } from "./hooks/useFocusRequests";
 import { OnlineCell } from "./OnlineCell";
@@ -67,7 +68,7 @@ function NetRow({ node, ctx }: { node: NetNode; ctx: TreeCtx }) {
     <button
       ref={main}
       type="button"
-      className={ui.cx(ui.ROW_MAIN, !node.match && ui.ROW_CONTEXT)}
+      className={cn(ui.ROW_MAIN, !node.match && ui.ROW_CONTEXT)}
       data-testid="row"
       aria-current={selected || undefined}
       aria-controls={selected ? ctx.detailsId : undefined}
@@ -103,7 +104,7 @@ function NetRow({ node, ctx }: { node: NetNode; ctx: TreeCtx }) {
   return (
     <>
       <div
-        className={ui.cx(
+        className={cn(
           ui.ROW,
           depth > 0 && ui.ROW_SUB,
           selected ? ui.ROW_ON : ui.ROW_IDLE,
@@ -126,7 +127,7 @@ function NetRow({ node, ctx }: { node: NetNode; ctx: TreeCtx }) {
               onClick={() => ctx.setExpanded(channel.id, !expanded)}
             >
               <ChevronRight
-                className={ui.cx(ui.CHEVRON_SVG, expanded && ui.CHEVRON_OPEN)}
+                className={cn(ui.CHEVRON_SVG, expanded && ui.CHEVRON_OPEN)}
               />
             </button>
             {mainButton(null)}

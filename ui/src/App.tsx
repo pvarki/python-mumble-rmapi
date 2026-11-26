@@ -2,8 +2,10 @@ import { Flag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { StatusDot } from "@/components/StatusDot";
 import { Admin } from "./admin/Admin";
 import { addTranslations, NS } from "./i18n";
+import { cn } from "./lib/utils";
 import { MISSIONS, pathLabel } from "./paths";
 import * as ui from "./ui";
 import { Talk } from "./voice/Talk";
@@ -28,13 +30,13 @@ function YouLine({ data }: { data: ClientData }) {
       <div className={ui.YOU_LINE}>
         {data.voice === true && (
           <span className={ui.YOU_STATUS}>
-            <span className={ui.DOT_ON} />
+            <StatusDot state="on" />
             {t("voiceOn")}
           </span>
         )}
         {data.voice === false && (
-          <span className={ui.cx(ui.YOU_STATUS, ui.YOU_OFF)}>
-            <span className={ui.DOT_RED} />
+          <span className={cn(ui.YOU_STATUS, ui.YOU_OFF)}>
+            <StatusDot state="alert" />
             {t("voiceOff")}
           </span>
         )}

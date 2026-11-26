@@ -11,6 +11,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Button } from "../components/ui/button";
 import { NS } from "../i18n";
 import * as ui from "../ui";
 import { loadBrowser } from "./browser";
@@ -62,21 +63,20 @@ export function Talk() {
         <>
           <p className={ui.MUTED_XS}>{t("talk.intro")}</p>
           {s.failure && <FailureLine failure={s.failure} detail={s.detail} />}
-          <button
+          <Button
             type="button"
             aria-disabled={s.phase === "connecting"}
-            className={ui.cx(ui.BTN, ui.BTN_PRIMARY_V)}
             onClick={connect}
           >
             {s.phase === "connecting" ? (
               <Loader2 className={ui.LOADER} />
             ) : (
-              <Mic className={ui.ICON} />
+              <Mic />
             )}
             {s.phase === "connecting"
               ? t("talk.connecting")
               : t("talk.connect")}
-          </button>
+          </Button>
         </>
       )}
     </section>

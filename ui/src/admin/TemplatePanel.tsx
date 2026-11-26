@@ -3,6 +3,7 @@ import { useEffect, useId, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Template } from "../api";
+import { Button } from "../components/ui/button";
 import { NS, RAW } from "../i18n";
 import * as ui from "../ui";
 
@@ -49,15 +50,17 @@ export function TemplatePanel({
         <h3 ref={title} id={titleId} tabIndex={-1} className={ui.PLAN_TITLE}>
           {t("admin.templatesTitle")}
         </h3>
-        <button
+        <Button
           type="button"
-          className={ui.ICON_BTN_GHOST}
+          variant="ghost"
+          size="icon"
+          className={ui.MUTED_BTN}
           aria-label={t("admin.close")}
           aria-disabled={busy || undefined}
           onClick={close}
         >
-          <X className={ui.ICON} />
-        </button>
+          <X />
+        </Button>
       </div>
       {hasNets && <p className={ui.PLAN_NOTE}>{t("admin.templatesKeep")}</p>}
       <ul>
@@ -72,9 +75,9 @@ export function TemplatePanel({
                 {t("admin.templateNets", { count: template.nets })}
               </span>
             </div>
-            <button
+            <Button
               type="button"
-              className={ui.cx(ui.BTN_SM, ui.SM_PRIMARY)}
+              size="sm"
               aria-label={t("admin.applyTemplate", {
                 name: template.name,
                 ...RAW,
@@ -86,7 +89,7 @@ export function TemplatePanel({
                 <Loader2 className={ui.LOADER} />
               )}
               {t("admin.apply")}
-            </button>
+            </Button>
           </li>
         ))}
       </ul>

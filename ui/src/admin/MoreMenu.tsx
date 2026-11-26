@@ -1,14 +1,14 @@
 import { MoreHorizontal } from "lucide-react";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode,
-  type RefObject,
-} from "react";
+import type { ReactNode, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Button } from "../components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 import { NS } from "../i18n";
 import * as ui from "../ui";
 
@@ -27,89 +27,43 @@ export function MoreMenu({
   items: MenuItem[];
 }) {
   const { t } = useTranslation(NS);
-  const [open, setOpen] = useState(false);
-  const wrap = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (event: PointerEvent) => {
-      if (!wrap.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        trigger.current?.focus();
-      }
-    };
-    window.addEventListener("pointerdown", onPointer);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("pointerdown", onPointer);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open, trigger]);
-
-  const choose = (action: () => void) => () => {
-    setOpen(false);
-    action();
-  };
-
-  // Arrow keys, Home and End move between the items, as in any menu
-  const onMenuKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const items = Array.from(
-      event.currentTarget.querySelectorAll<HTMLElement>("[role=menuitem]"),
-    );
-    const at = items.indexOf(document.activeElement as HTMLElement);
-    const next = {
-      ArrowDown: (at + 1) % items.length,
-      ArrowUp: (at - 1 + items.length) % items.length,
-      Home: 0,
-      End: items.length - 1,
-    }[event.key];
-    if (next === undefined) return;
-    event.preventDefault();
-    items[next].focus();
-  };
-
+  // Not modal, as a modal menu holds focus while it fades out, so a panel opened from it could not take focus
   return (
-    <div
-      ref={wrap}
-      className={ui.MENU_WRAP}
-      onBlur={(event) => {
-        if (!wrap.current?.contains(event.relatedTarget)) {
-          setOpen(false);
-        }
-      }}
-    >
-      <button
-        ref={trigger}
-        type="button"
-        className={ui.ICON_BTN}
-        title={t("admin.more")}
-        aria-label={t("admin.more")}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          ref={trigger}
+          type="button"
+          variant="outline"
+          size="icon-lg"
+          className={ui.MUTED_BTN}
+          title={t("admin.more")}
+          aria-label={t("admin.more")}
+        >
+          <MoreHorizontal />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        loop
+        className={ui.MENU}
+        onCloseAutoFocus={(event) => {
+          // An item that opened a panel or a confirmation has moved focus there already
+          const at = document.activeElement;
+          if (at && at !== document.body) event.preventDefault();
+        }}
       >
-        <MoreHorizontal className={ui.ICON} />
-      </button>
-      {open && (
-        <div role="menu" className={ui.MENU} onKeyDown={onMenuKey}>
-          {items.map((item, index) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              autoFocus={index === 0}
-              className={ui.MENU_ITEM}
-              onClick={choose(item.action)}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+        {items.map((item) => (
+          <DropdownMenuItem
+            key={item.label}
+            className={ui.MENU_ITEM}
+            onSelect={item.action}
+          >
+            {item.icon}
+            {item.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 
+import { StatusDot } from "@/components/StatusDot";
 import { NS } from "../i18n";
 import * as ui from "../ui";
 
@@ -26,7 +27,7 @@ export function OnlineCell({
     >
       {show && (
         <>
-          <span className={ui.DOT_ON} />
+          <StatusDot state="on" />
           {count}
         </>
       )}

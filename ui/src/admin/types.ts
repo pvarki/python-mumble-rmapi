@@ -4,7 +4,7 @@ import type { Derived } from "./tree";
 
 export type Tab = "nets" | "users";
 
-// What shows at the top of the net list: a new net's name, the template chooser, or removing the whole plan
+// The panel open above the net list
 export type Top = "net" | "templates" | "clear" | null;
 
 export interface Data {
@@ -23,6 +23,15 @@ export type Mode =
   | "edit"
   | { last: string }
   | { access: Access };
+
+// Where focus goes when the open net's picker, form or confirmation closes
+export type ReturnTo =
+  | "member"
+  | "subnet"
+  | "remove"
+  | "edit"
+  | { choice: Access }
+  | { chip: string };
 
 // key is 'u:<channel id>' for a unit net or 'm:<mission name>' for a mission
 export interface Open {

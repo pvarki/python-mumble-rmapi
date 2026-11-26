@@ -224,8 +224,9 @@ describe("suggest", () => {
       suggest(people, ["ALFA-JJ"], "alfa-").map((u) => u.callsign),
     ).toEqual(["ALFA-R1", "ALFA-R2", "ALFA-R3"]);
   });
-  it("caps the list", () => {
-    expect(suggest(people, [], "alfa", 2)).toHaveLength(2);
+  it("stops at what the list shows without scrolling", () => {
+    const many = Array.from({ length: 9 }, (_, i) => user(`ALFA-${i}`));
+    expect(suggest(many, [], "alfa")).toHaveLength(7);
   });
 });
 

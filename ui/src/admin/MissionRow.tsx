@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { NS } from "../i18n";
+import { cn } from "../lib/utils";
 import * as ui from "../ui";
 import { takeAsked } from "./hooks/useFocusRequests";
 import { OnlineCell } from "./OnlineCell";
@@ -31,7 +32,7 @@ export function MissionRow({
 
   return (
     <li className={first ? undefined : ui.SEP} data-testid={`mission-${name}`}>
-      <div className={ui.cx(ui.ROW, selected ? ui.ROW_ON : ui.ROW_IDLE)}>
+      <div className={cn(ui.ROW, selected ? ui.ROW_ON : ui.ROW_IDLE)}>
         {selected && <span className={ui.SEL_BAR} aria-hidden="true" />}
         <button
           ref={main}

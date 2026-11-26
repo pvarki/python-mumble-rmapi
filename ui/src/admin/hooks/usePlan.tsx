@@ -95,26 +95,26 @@ export function usePlan({
       ? [
           {
             label: t("admin.useTemplate"),
-            icon: <ListPlus className={ui.ICON} />,
+            icon: <ListPlus />,
             action: () => openTop("templates"),
           },
         ]
       : []),
     {
       label: t("admin.importPlan"),
-      icon: <Upload className={ui.ICON} />,
+      icon: <Upload />,
       action: () => fileInput.current?.click(),
     },
     {
       label: t("admin.exportPlan"),
-      icon: <Download className={ui.ICON} />,
+      icon: <Download />,
       action: onExport,
     },
     ...(hasNets
       ? [
           {
             label: t("admin.clearAll"),
-            icon: <Trash2 className={ui.cx(ui.ICON, ui.LINK_DANGER_ICON)} />,
+            icon: <Trash2 className={ui.DANGER_ICON} />,
             action: () => openTop("clear"),
           },
         ]

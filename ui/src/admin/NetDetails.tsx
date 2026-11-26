@@ -3,19 +3,21 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, type Access } from "../api";
+import { Button } from "../components/ui/button";
 import { NS, RAW } from "../i18n";
+import { cn } from "../lib/utils";
 import * as ui from "../ui";
 import { AccessChoice } from "./AccessChoice";
 import { EditForm } from "./EditForm";
 import { Frame } from "./Frame";
-import { InlineConfirm } from "./InlineConfirm";
 import { InNet } from "./InNet";
 import { MemberChips, memberKey } from "./MemberChips";
 import { MemberPicker } from "./MemberPicker";
 import { NameForm, adding } from "./NameForm";
+import { NetConfirm } from "./NetConfirm";
 import { ruleSentence } from "./ruleSentence";
-import { ancestors, focusAfterRemove, type NetNode, type Rule } from "./tree";
-import type { Mode, TreeCtx } from "./types";
+import { ancestors, type NetNode, type Rule } from "./tree";
+import type { Mode, ReturnTo, TreeCtx } from "./types";
 
 function AccessLine({ rule }: { rule: Rule }) {
   const { t } = useTranslation(NS);
@@ -28,15 +30,6 @@ function AccessLine({ rule }: { rule: Rule }) {
     </p>
   );
 }
-
-// Where focus goes once a picker, form or confirmation gives way to the plain details again
-type Return =
-  | "member"
-  | "subnet"
-  | "remove"
-  | "edit"
-  | { choice: Access }
-  | { chip: string };
 
 export function NetDetails({
   node,
@@ -54,9 +47,6 @@ export function NetDetails({
   const id = channel.id;
   const { byId } = ctx.derived;
   const members = [...channel.members].sort((a, b) => a.localeCompare(b));
-  const last = typeof mode === "object" && "last" in mode ? mode.last : null;
-  const narrowTo =
-    typeof mode === "object" && "access" in mode ? mode.access : null;
   const subnetsId = useId();
   // Names added since the sub-net form opened, in the order they succeeded
   const [added, setAdded] = useState<string[]>([]);
@@ -68,7 +58,7 @@ export function NetDetails({
   const accessGroup = useRef<HTMLDivElement>(null);
   // After a chip's x removes it, focus moves to the next chip's x, or to '+ Jäsen'
   const refocus = useRef<{ callsign: string; index: number } | null>(null);
-  const returnTo = useRef<Return | null>(null);
+  const returnTo = useRef<ReturnTo | null>(null);
 
   useEffect(() => {
     const want = refocus.current;
@@ -106,7 +96,7 @@ export function NetDetails({
     }
   });
 
-  const backTo = (where: Return) => {
+  const backTo = (where: ReturnTo) => {
     returnTo.current = where;
     ctx.setMode("view");
   };
@@ -124,19 +114,6 @@ export function NetDetails({
       ctx.setMode({ last: callsign });
     }
   };
-
-  const removeText = [
-    node.descendants
-      ? t("admin.confirmRemoveTree", {
-          name: channel.name,
-          count: node.descendants,
-          ...RAW,
-        })
-      : t("admin.confirmRemove", { name: channel.name, ...RAW }),
-    node.subtreeOnline && t("admin.movesOut"),
-  ]
-    .filter(Boolean)
-    .join(" ");
 
   // Members only on a net with nobody in it would lock everyone out, the people about to be added too, so the
   // picker opens instead: the first member makes the net members-only. A change that lets fewer people in asks
@@ -160,6 +137,9 @@ export function NetDetails({
     void ctx.run(`acc:${id}`, () => api.editChannel(id, { access: next }));
   };
 
+  // Behind a confirmation the details stay as they are, so Cancel finds the button it came from
+  const confirming = mode === "remove" || typeof mode === "object";
+
   const above = ancestors(id, byId).map((a) => byId.get(a)?.channel.name);
   const path = above.length ? `${above.join(" › ")} ›` : "";
   const hasDesc = channel.description !== "";
@@ -173,17 +153,19 @@ export function NetDetails({
       testId="net-panel"
       action={
         mode !== "edit" && (
-          <button
+          <Button
             ref={editNet}
             type="button"
-            className={ctx.wide ? ui.ICON_BTN_GHOST : ui.BAR_BTN}
+            variant="ghost"
+            size={ctx.wide ? "icon" : "icon-lg"}
+            className={ui.MUTED_BTN}
             data-testid="edit-net"
             aria-label={t("admin.editNet")}
             title={t("admin.editNet")}
             onClick={() => ctx.setMode("edit")}
           >
-            <Pencil className={ui.ICON} />
-          </button>
+            <Pencil />
+          </Button>
         )
       }
     >
@@ -196,7 +178,7 @@ export function NetDetails({
           {hasDesc && <p className={ui.PANEL_DESC}>{channel.description}</p>}
           {/* On the phone screen the bar's own border already separates a net without a description */}
           <div
-            className={ui.cx(
+            className={cn(
               ui.DETAIL_BODY,
               (ctx.wide || hasDesc) && ui.DETAIL_SPLIT,
             )}
@@ -212,49 +194,13 @@ export function NetDetails({
               node.rule.kind === "membersPlus") && (
               <AccessLine rule={node.rule} />
             )}
-            {narrowTo !== null ? (
-              <InlineConfirm
-                text={t("admin.confirmNarrow")}
-                busy={ctx.pending.has(`acc:${id}`)}
-                confirmLabel={t("admin.change")}
-                onCancel={() => backTo({ choice: channel.access })}
-                onConfirm={() =>
-                  void ctx.run(
-                    `acc:${id}`,
-                    () => api.editChannel(id, { access: narrowTo }),
-                    () => backTo({ choice: narrowTo }),
-                  )
-                }
-              />
-            ) : channel.access !== "invite" ? (
+            {channel.access !== "invite" ? (
               mode !== "picker" &&
               members.length > 0 && (
                 <p className={ui.MUTED_XS}>
                   {t("admin.membersKept", { count: members.length })}
                 </p>
               )
-            ) : last !== null ? (
-              <InlineConfirm
-                text={
-                  node.rule.kind === "membersPlus"
-                    ? t("admin.lastMemberOnly", {
-                        callsign: last,
-                        count: node.rule.nets.length,
-                        nets: node.rule.nets.join(", "),
-                        ...RAW,
-                      })
-                    : t("admin.lastMemberNobody", { callsign: last, ...RAW })
-                }
-                busy={ctx.pending.has(memberKey(id, last))}
-                onCancel={() => backTo({ chip: last })}
-                onConfirm={() =>
-                  void ctx.run(
-                    memberKey(id, last),
-                    () => api.removeMember(id, last),
-                    () => backTo("member"),
-                  )
-                }
-              />
             ) : (
               <MemberChips
                 id={id}
@@ -288,25 +234,29 @@ export function NetDetails({
               >
                 <span id={subnetsId}>{t("admin.subnets")}</span>
                 {node.children.map((child) => (
-                  <button
+                  <Button
                     key={child.channel.id}
                     type="button"
+                    variant="ghost"
+                    size="xs"
                     className={ui.SUBNET_LINK}
                     data-testid="subnet-link"
                     onClick={() => ctx.openNet(`u:${child.channel.id}`)}
                   >
                     {child.channel.name}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
           </div>
-          {mode === "view" && (
+          {(mode === "view" || confirming) && (
             <div className={ui.DETAIL_FOOT}>
-              <button
+              <Button
                 ref={addSubnet}
                 type="button"
-                className={ui.cx(ui.LINK_BTN, ui.LINK_MUTED)}
+                variant="ghost"
+                size="xs"
+                className={ui.MUTED_BTN}
                 onClick={() => {
                   setAdded([]);
                   ctx.setMode("subnet");
@@ -314,16 +264,19 @@ export function NetDetails({
               >
                 <Plus className={ui.ICON_META} />
                 {t("admin.addSubnet")}
-              </button>
-              <button
+              </Button>
+              {/* Same weight as its neighbour; the red icon alone marks the action as destructive */}
+              <Button
                 ref={removeNet}
                 type="button"
-                className={ui.cx(ui.LINK_BTN, ui.LINK_DANGER)}
+                variant="ghost"
+                size="xs"
+                className={ui.MUTED_BTN}
                 onClick={() => ctx.setMode("remove")}
               >
-                <Trash2 className={ui.cx(ui.ICON_META, ui.LINK_DANGER_ICON)} />
+                <Trash2 className={cn(ui.ICON_META, ui.DANGER_ICON)} />
                 {t("admin.removeNet")}
-              </button>
+              </Button>
             </div>
           )}
           {mode === "subnet" && (
@@ -350,25 +303,7 @@ export function NetDetails({
               )}
             </div>
           )}
-          {mode === "remove" && (
-            <div className={ui.DETAIL_FOOT_BLOCK}>
-              <InlineConfirm
-                text={removeText}
-                busy={ctx.pending.has(`rm:${id}`)}
-                onCancel={() => backTo("remove")}
-                onConfirm={() =>
-                  void ctx.run(
-                    `rm:${id}`,
-                    () => api.removeChannel(id),
-                    () => {
-                      const next = focusAfterRemove(node, ctx.derived.roots);
-                      ctx.closeNet(next === null ? null : `u:${next}`);
-                    },
-                  )
-                }
-              />
-            </div>
-          )}
+          <NetConfirm node={node} ctx={ctx} mode={mode} backTo={backTo} />
         </>
       )}
     </Frame>

@@ -2,6 +2,8 @@ import { CornerLeftUp, ListPlus, Lock, Plus, Upload } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
+import { StatusDot } from "@/components/StatusDot";
+import { Button } from "../components/ui/button";
 import { NS, RAW } from "../i18n";
 import * as ui from "../ui";
 import { MissionRow } from "./MissionRow";
@@ -31,7 +33,7 @@ function GroupHeading({
         <span>{t("admin.presenceUnknown")}</span>
       ) : online > 0 ? (
         <span className={ui.HEAD_ONLINE}>
-          <span className={ui.DOT_ON} aria-hidden="true" />
+          <StatusDot state="on" />
           <span aria-hidden="true">{online}</span>
           <span className={ui.SR}>
             {t("admin.onlineCount", { count: online })}
@@ -72,7 +74,7 @@ export function NetsTab({
   data: Data;
   ctx: TreeCtx;
   query: string;
-  // The new net's form, the template chooser or the plan's removal, above the cards
+  // The new net's form or the template chooser, above the cards
   top: ReactNode;
   onAddNet: () => void;
   // Null when no template is on offer
@@ -96,34 +98,23 @@ export function NetsTab({
             {t("admin.empty")}
             <div className={ui.EMPTY_BTNS}>
               {onTemplates && (
-                <button
-                  type="button"
-                  className={ui.cx(ui.BTN, ui.BTN_PRIMARY_V)}
-                  onClick={onTemplates}
-                >
-                  <ListPlus className={ui.ICON} />
+                <Button type="button" onClick={onTemplates}>
+                  <ListPlus />
                   {t("admin.emptyTemplate")}
-                </button>
+                </Button>
               )}
-              <button
+              <Button
                 type="button"
-                className={ui.cx(
-                  ui.BTN,
-                  onTemplates ? ui.BTN_OUTLINE_V : ui.BTN_PRIMARY_V,
-                )}
+                variant={onTemplates ? "outline" : "default"}
                 onClick={() => fileInput.current?.click()}
               >
-                <Upload className={ui.ICON} />
+                <Upload />
                 {t("admin.emptyImport")}
-              </button>
-              <button
-                type="button"
-                className={ui.cx(ui.BTN, ui.BTN_OUTLINE_V)}
-                onClick={onAddNet}
-              >
-                <Plus className={ui.ICON} />
+              </Button>
+              <Button type="button" variant="outline" onClick={onAddNet}>
+                <Plus />
                 {t("admin.addNet")}
-              </button>
+              </Button>
             </div>
           </div>
         ) : (

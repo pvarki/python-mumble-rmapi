@@ -1,4 +1,3 @@
-import { Download } from "lucide-react";
 import {
   useEffect,
   useId,
@@ -10,9 +9,11 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { api } from "../api";
+import { Tabs, TabsContent } from "../components/ui/tabs";
 import { NS } from "../i18n";
 import { read, write } from "../lib/storage";
 import * as ui from "../ui";
+import { ClearPlan } from "./ClearPlan";
 import { useAdminData } from "./hooks/useAdminData";
 import { useFocusRequests } from "./hooks/useFocusRequests";
 import { useFolds } from "./hooks/useFolds";
@@ -20,14 +21,13 @@ import { useNotice } from "./hooks/useNotice";
 import { usePlan } from "./hooks/usePlan";
 import { useRun } from "./hooks/useRun";
 import { useWide } from "./hooks/useWide";
-import { InlineConfirm } from "./InlineConfirm";
 import { MissionDetails } from "./MissionDetails";
 import { NameForm, adding } from "./NameForm";
 import { NetDetails } from "./NetDetails";
 import { NetsTab } from "./NetsTab";
 import { NoticeLine } from "./NoticeLine";
 import { TemplatePanel } from "./TemplatePanel";
-import { Toolbar, type TabIds } from "./Toolbar";
+import { Toolbar } from "./Toolbar";
 import { deriveTree, foldedAncestor, keyExists, parentOf } from "./tree";
 import type { Data, Mode, Open, Tab, Top, TreeCtx } from "./types";
 import { UsersList } from "./UsersList";
@@ -51,18 +51,16 @@ export function Admin() {
   const [open, setOpen] = useState<Open | null>(null);
   const [top, setTop] = useState<Top>(null);
   const topNow = useRef<Top>(null);
+  // The button that takes focus once the top panel has gone; a confirmation holds focus until then
+  const focusAfterTop = useRef<RefObject<HTMLButtonElement | null> | null>(
+    null,
+  );
   const fileInput = useRef<HTMLInputElement>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const moreButton = useRef<HTMLButtonElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const wide = useWide(wrap, WIDE_FROM);
-  const baseId = useId();
-  const ids: TabIds = {
-    nets: `${baseId}-nets`,
-    users: `${baseId}-users`,
-    panel: `${baseId}-panel`,
-  };
-  const detailsId = `${baseId}-details`;
+  const detailsId = useId();
   const { notice, showNotice, fail, clearError } = useNotice();
   const { data, templates, load } = useAdminData(fail, closeRemoved);
   const { run, pending } = useRun(load, fail, clearError);
@@ -115,6 +113,10 @@ export function Admin() {
 
   useEffect(() => {
     topNow.current = top;
+    if (top === null && focusAfterTop.current) {
+      focusAfterTop.current.current?.focus();
+      focusAfterTop.current = null;
+    }
   });
 
   const openNet = (key: string) => {
@@ -157,9 +159,9 @@ export function Admin() {
     setTop(next);
   };
 
-  const closeTop = (focus: RefObject<HTMLButtonElement | null>) => {
+  const closeTop = (button: RefObject<HTMLButtonElement | null>) => {
+    focusAfterTop.current = button;
     setTop(null);
-    focus.current?.focus();
   };
 
   // A request's panel closes when it is done, unless something else has taken its place meanwhile
@@ -178,9 +180,10 @@ export function Admin() {
       },
     );
 
+  const hasNets = !!data?.channels.length;
   const plan = usePlan({
     templates,
-    hasNets: !!data?.channels.length,
+    hasNets,
     fileInput,
     run,
     showNotice,
@@ -201,34 +204,10 @@ export function Admin() {
     ) : top === "templates" ? (
       <TemplatePanel
         templates={templates}
-        hasNets={!!data?.channels.length}
+        hasNets={hasNets}
         pending={pending}
         onApply={plan.applyTemplate}
         onClose={() => closeTop(moreButton)}
-      />
-    ) : top === "clear" && derived ? (
-      <InlineConfirm
-        text={[
-          t("admin.confirmClear", { count: derived.unitCount }),
-          derived.roots.some((r) => r.subtreeOnline) && t("admin.movesOut"),
-          t("admin.clearExportFirst"),
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        busy={pending.has("clear")}
-        confirmLabel={t("admin.removeAll")}
-        extra={
-          <button
-            type="button"
-            className={ui.cx(ui.BTN_SM, ui.SM_GHOST)}
-            onClick={plan.onExport}
-          >
-            <Download className={ui.ICON} />
-            {t("admin.exportFirst")}
-          </button>
-        }
-        onCancel={() => closeTop(moreButton)}
-        onConfirm={plan.clearPlan}
       />
     ) : null;
 
@@ -285,64 +264,78 @@ export function Admin() {
       />
     ) : null;
 
+  const loading = <p className={ui.NOMATCH}>{t("admin.loading")}</p>;
+
   return (
-    <div ref={wrap} className={ui.ADMIN_WRAP}>
-      <Toolbar
-        tab={tab}
-        pickTab={pickTab}
-        ids={ids}
-        derived={derived}
-        users={data?.users ?? []}
-        query={query}
-        setQuery={search}
-        addButton={addButton}
-        onAddNet={() => openTop("net")}
-        moreButton={moreButton}
-        menu={plan.menu}
-      />
-      <input
-        ref={fileInput}
-        type="file"
-        accept=".yaml,.yml"
-        className={ui.HIDDEN_INPUT}
-        onChange={plan.onFile}
-      />
-      {!detailsShown && noticeLine}
-      <div
-        role="tabpanel"
-        id={ids.panel}
-        aria-labelledby={ids[tab]}
-        // Esc that no inner field, picker or confirmation took closes the open net
-        onKeyDown={(event) => {
-          if (event.key === "Escape" && tab === "nets" && open) {
-            event.stopPropagation();
-            closeNet();
-          }
-        }}
-      >
-        {!data || !ctx ? (
-          <p className={ui.NOMATCH}>{t("admin.loading")}</p>
-        ) : tab === "nets" ? (
-          <NetsTab
-            data={data}
-            ctx={ctx}
-            query={query}
-            top={topPanel}
-            onAddNet={() => openTop("net")}
-            onTemplates={templates.length ? () => openTop("templates") : null}
-            fileInput={fileInput}
-            details={details}
-          />
-        ) : (
-          <UsersList
-            users={data.users}
-            query={query}
-            known={ctx.derived.presenceKnown}
-            run={run}
-            pending={pending}
+    <div ref={wrap}>
+      <Tabs value={tab} onValueChange={(value) => pickTab(value as Tab)}>
+        <Toolbar
+          tab={tab}
+          derived={derived}
+          users={data?.users ?? []}
+          query={query}
+          setQuery={search}
+          addButton={addButton}
+          onAddNet={() => openTop("net")}
+          moreButton={moreButton}
+          menu={plan.menu}
+        />
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".yaml,.yml"
+          className={ui.HIDDEN_INPUT}
+          onChange={plan.onFile}
+        />
+        {top === "clear" && derived && (
+          <ClearPlan
+            derived={derived}
+            busy={pending.has("clear")}
+            onExport={plan.onExport}
+            onClear={plan.clearPlan}
+            onClose={() => closeTop(moreButton)}
           />
         )}
-      </div>
+        {!detailsShown && noticeLine}
+        <TabsContent
+          value="nets"
+          // Esc that no inner field, picker or confirmation took closes the open net
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && open) {
+              event.stopPropagation();
+              closeNet();
+            }
+          }}
+        >
+          {data && ctx ? (
+            <NetsTab
+              data={data}
+              ctx={ctx}
+              query={query}
+              top={topPanel}
+              onAddNet={() => openTop("net")}
+              onTemplates={templates.length ? () => openTop("templates") : null}
+              fileInput={fileInput}
+              details={details}
+            />
+          ) : (
+            loading
+          )}
+        </TabsContent>
+        <TabsContent value="users">
+          {data && derived ? (
+            <UsersList
+              users={data.users}
+              query={query}
+              known={derived.presenceKnown}
+              run={run}
+              pending={pending}
+            />
+          ) : (
+            loading
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -190,12 +190,12 @@ export function listUsers(users: User[], query: string): User[] {
     .sort((a, b) => a.callsign.localeCompare(b.callsign));
 }
 
-// Member suggestions: up to 8 non-revoked non-members containing the text, online first, then A–Z
+// Member suggestions: non-revoked non-members containing the text, online first, then A–Z. At most 7, as many
+// 40 px rows as the 300 px list shows without scrolling.
 export function suggest(
   users: User[],
   members: string[],
   text: string,
-  limit = 8,
 ): User[] {
   const q = text.trim().toLowerCase();
   if (!q) return [];
@@ -208,7 +208,7 @@ export function suggest(
     .sort(
       (a, b) => online(a) - online(b) || a.callsign.localeCompare(b.callsign),
     )
-    .slice(0, limit);
+    .slice(0, 7);
 }
 
 // The row that takes focus after a net is removed: its parent, or at the top level the next (else previous)

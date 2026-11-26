@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 
+import { StatusDot, type Status } from "@/components/StatusDot";
 import { api, type User } from "../api";
+import { Switch } from "../components/ui/switch";
 import { NS, RAW } from "../i18n";
 import { pathLabel } from "../paths";
 import * as ui from "../ui";
@@ -19,45 +21,32 @@ function VoiceSwitch({
 }) {
   const { t } = useTranslation(NS);
   const on = !user.voice_disabled;
+  const name = t("admin.voiceFor", { callsign: user.callsign, ...RAW });
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      title={t("admin.voiceFor", { callsign: user.callsign, ...RAW })}
-      aria-label={t("admin.voiceFor", { callsign: user.callsign, ...RAW })}
-      className={ui.SWITCH_BTN}
-      aria-disabled={busy || undefined}
-      onClick={() =>
-        void run(`voice:${user.callsign}`, () =>
-          api.setVoice(user.callsign, !on),
-        )
-      }
-    >
-      <span
-        className={ui.cx(
-          ui.SWITCH_TRACK,
-          on ? ui.SWITCH_TRACK_ON : ui.SWITCH_TRACK_OFF,
-        )}
-      >
-        <span
-          data-state={on ? "checked" : "unchecked"}
-          className={ui.cx(
-            ui.SWITCH_THUMB,
-            on ? ui.SWITCH_THUMB_ON : ui.SWITCH_THUMB_OFF,
-          )}
-        />
-      </span>
-    </button>
+    // The label gives the small switch a 40 px touch target
+    <label className="inline-flex h-10 shrink-0 items-center px-2">
+      <Switch
+        checked={on}
+        title={name}
+        aria-label={name}
+        aria-disabled={busy || undefined}
+        className="aria-disabled:opacity-50"
+        onCheckedChange={(checked) =>
+          void run(`voice:${user.callsign}`, () =>
+            api.setVoice(user.callsign, checked),
+          )
+        }
+      />
+    </label>
   );
 }
 
-// The dot's class and the words a screen reader hears in its place
-function presence(user: User): [string, string] {
-  if (user.online === null) return [ui.DOT_UNKNOWN, "admin.presenceUnknown"];
+// The dot and the words a screen reader hears in its place
+function presence(user: User): [Status, string] {
+  if (user.online === null) return ["unknown", "admin.presenceUnknown"];
   return user.online.length
-    ? [ui.DOT_ON, "admin.isOnline"]
-    : [ui.DOT_OFF, "admin.isOffline"];
+    ? ["on", "admin.isOnline"]
+    : ["off", "admin.isOffline"];
 }
 
 export function UsersList({
@@ -95,7 +84,7 @@ export function UsersList({
       </div>
       <ul>
         {shown.map((user) => {
-          const [dot, words] = presence(user);
+          const [state, words] = presence(user);
           const where = user.online?.map(pathLabel).join(", ") ?? "";
           return (
             <li
@@ -103,14 +92,14 @@ export function UsersList({
               className={ui.USER_ROW}
               data-testid={`user-${user.callsign}`}
             >
-              <span className={dot} />
+              <StatusDot state={state} />
               <span className={ui.USER_CALLSIGN} title={user.callsign}>
                 {user.callsign}
               </span>
               <span className={ui.SR}>{t(words)}</span>
               {user.voice_disabled ? (
                 <span className={ui.USER_WHERE_OFF}>
-                  <span className={ui.DOT_RED} />
+                  <StatusDot state="alert" />
                   {t("admin.voiceOff")}
                 </span>
               ) : (

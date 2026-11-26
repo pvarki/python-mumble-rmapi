@@ -2,7 +2,10 @@ import { Plus, X } from "lucide-react";
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
+import { StatusDot } from "@/components/StatusDot";
+import { Badge } from "@/components/ui/badge";
 import { NS, RAW } from "../i18n";
+import { cn } from "../lib/utils";
 import { pathLabel } from "../paths";
 import * as ui from "../ui";
 import type { TreeCtx } from "./types";
@@ -38,14 +41,14 @@ export function MemberChips({
         const where = ctx.derived.whereOnline.get(callsign);
         const gone = revoked.has(callsign);
         return (
-          <span
+          <Badge
             key={callsign}
-            className={ui.cx(ui.CHIP_X, gone && ui.CHIP_DIM)}
+            className={cn("min-w-0 px-0 pl-3", gone && "opacity-50")}
             title={gone ? t("admin.revoked") : where?.map(pathLabel).join(", ")}
           >
             {where && (
               <>
-                <span className={ui.DOT_ON} />
+                <StatusDot state="on" />
                 <span className={ui.SR}>{t("admin.isOnline")}</span>
               </>
             )}
@@ -62,7 +65,7 @@ export function MemberChips({
             >
               <X className={ui.ICON_META} />
             </button>
-          </span>
+          </Badge>
         );
       })}
       {!picking && (

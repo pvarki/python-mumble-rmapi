@@ -2,6 +2,8 @@ import { Loader2, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import { NS } from "../i18n";
 import * as ui from "../ui";
 
@@ -39,7 +41,7 @@ export function NameForm({
   };
   return (
     <div className={ui.FORM}>
-      <input
+      <Input
         ref={input}
         autoFocus
         type="text"
@@ -58,28 +60,25 @@ export function NameForm({
           }
         }}
       />
-      {ready ? (
-        <button
-          type="button"
-          className={ui.cx(ui.BTN_SM, ui.SM_PRIMARY)}
-          onClick={submit}
-        >
-          {busy && <Loader2 className={ui.LOADER} />}
-          {t("admin.add")}
-        </button>
-      ) : (
-        <button type="button" className={ui.SM_INERT} aria-disabled="true">
-          {t("admin.add")}
-        </button>
-      )}
-      <button
+      <Button
         type="button"
-        className={ui.ICON_BTN_GHOST}
+        size="sm"
+        aria-disabled={!ready || undefined}
+        onClick={submit}
+      >
+        {busy && <Loader2 className={ui.LOADER} />}
+        {t("admin.add")}
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className={ui.MUTED_BTN}
         aria-label={t("admin.cancel")}
         onClick={onCancel}
       >
-        <X className={ui.ICON} />
-      </button>
+        <X />
+      </Button>
     </div>
   );
 }

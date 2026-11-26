@@ -3,6 +3,9 @@ import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, type ChannelEdit } from "../api";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Textarea } from "../components/ui/textarea";
 import { NS } from "../i18n";
 import * as ui from "../ui";
 import type { NetNode } from "./tree";
@@ -53,7 +56,7 @@ export function EditForm({
     >
       <label className={ui.FIELD}>
         <span className={ui.FIELD_LABEL}>{t("admin.netName")}</span>
-        <input
+        <Input
           autoFocus
           type="text"
           maxLength={100}
@@ -65,9 +68,8 @@ export function EditForm({
       </label>
       <label className={ui.FIELD}>
         <span className={ui.FIELD_LABEL}>{t("admin.description")}</span>
-        <textarea
+        <Textarea
           maxLength={1000}
-          className={ui.TEXTAREA}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
         />
@@ -78,27 +80,18 @@ export function EditForm({
         </p>
       )}
       <div className={ui.FORM_BTNS}>
-        <button
-          type="button"
-          className={ui.cx(ui.BTN_SM, ui.SM_GHOST, ui.CONFIRM_CANCEL)}
-          onClick={onDone}
-        >
+        <Button type="button" variant="ghost" size="sm" onClick={onDone}>
           {t("admin.cancel")}
-        </button>
-        {ready ? (
-          <button
-            type="submit"
-            className={ui.cx(ui.BTN_SM, ui.SM_PRIMARY)}
-            aria-describedby={describedBy}
-          >
-            {ctx.pending.has(key) && <Loader2 className={ui.LOADER} />}
-            {t("admin.save")}
-          </button>
-        ) : (
-          <button type="button" className={ui.SM_INERT} aria-disabled="true">
-            {t("admin.save")}
-          </button>
-        )}
+        </Button>
+        <Button
+          type="submit"
+          size="sm"
+          aria-disabled={!ready || undefined}
+          aria-describedby={describedBy}
+        >
+          {ctx.pending.has(key) && <Loader2 className={ui.LOADER} />}
+          {t("admin.save")}
+        </Button>
       </div>
     </form>
   );

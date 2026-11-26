@@ -2,7 +2,10 @@ import { Flag } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { StatusDot } from "@/components/StatusDot";
+import { Badge } from "@/components/ui/badge";
 import { NS } from "../i18n";
+import { cn } from "../lib/utils";
 import { pathLabel } from "../paths";
 import * as ui from "../ui";
 import { Frame } from "./Frame";
@@ -31,16 +34,16 @@ export function MissionDetails({
       testId="mission-panel"
     >
       {notice}
-      <div className={ui.cx(ui.DETAIL_BODY, ctx.wide && ui.DETAIL_SPLIT)}>
+      <div className={cn(ui.DETAIL_BODY, ctx.wide && ui.DETAIL_SPLIT)}>
         <p className={ui.ACCESS_LINE}>
           {!node.mission.open && <Flag className={ui.ACCESS_ICON} />}
           {t(node.mission.open ? "admin.missionOpen" : "admin.accessMission")}
         </p>
         <div className={ui.CHIPS_ROW}>
           {node.subscribers.map((s) => (
-            <span
+            <Badge
               key={s.callsign}
-              className={ui.cx(ui.CHIP, !s.known && ui.CHIP_DIM)}
+              className={cn(!s.known && "opacity-50")}
               title={
                 s.known
                   ? ctx.derived.whereOnline
@@ -52,12 +55,12 @@ export function MissionDetails({
             >
               {s.online && (
                 <>
-                  <span className={ui.DOT_ON} />
+                  <StatusDot state="on" />
                   <span className={ui.SR}>{t("admin.isOnline")}</span>
                 </>
               )}
               {s.callsign}
-            </span>
+            </Badge>
           ))}
         </div>
         <InNet callsigns={node.online} />

@@ -1,20 +1,21 @@
 import { Plus, Search, X } from "lucide-react";
-import { useRef, type RefObject } from "react";
+import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
+import { StatusDot } from "@/components/StatusDot";
 import type { User } from "../api";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { TabsList, TabsTrigger } from "../components/ui/tabs";
 import { NS } from "../i18n";
+import { cn } from "../lib/utils";
 import * as ui from "../ui";
 import { MoreMenu, type MenuItem } from "./MoreMenu";
 import type { Derived } from "./tree";
 import type { Tab } from "./types";
 
-export type TabIds = Record<Tab | "panel", string>;
-
 export function Toolbar({
   tab,
-  pickTab,
-  ids,
   derived,
   users,
   query,
@@ -25,8 +26,6 @@ export function Toolbar({
   menu,
 }: {
   tab: Tab;
-  pickTab: (tab: Tab) => void;
-  ids: TabIds;
   derived: Derived | null;
   users: User[];
   query: string;
@@ -37,7 +36,6 @@ export function Toolbar({
   menu: MenuItem[];
 }) {
   const { t } = useTranslation(NS);
-  const tabButtons = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
   const active = users.filter((u) => !u.revoked);
   const online = active.filter((u) => u.online?.length).length;
   const tabs: [Tab, string][] = [
@@ -46,39 +44,12 @@ export function Toolbar({
   ];
   return (
     <div className={ui.TOOLBAR}>
-      <div
-        role="tablist"
-        className={ui.TABLIST}
-        onKeyDown={(event) => {
-          const other: Tab = tab === "nets" ? "users" : "nets";
-          const next = (
-            {
-              ArrowLeft: other,
-              ArrowRight: other,
-              Home: "nets",
-              End: "users",
-            } as Record<string, Tab>
-          )[event.key];
-          if (!next) return;
-          event.preventDefault();
-          pickTab(next);
-          tabButtons.current[next]?.focus();
-        }}
-      >
+      <TabsList className={ui.TABLIST}>
         {tabs.map(([id, label]) => (
-          <button
+          <TabsTrigger
             key={id}
-            ref={(button) => {
-              tabButtons.current[id] = button;
-            }}
-            id={ids[id]}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            aria-controls={ids.panel}
-            tabIndex={tab === id ? 0 : -1}
-            className={ui.cx(ui.TAB, tab === id ? ui.TAB_ON : ui.TAB_OFF)}
-            onClick={() => pickTab(id)}
+            value={id}
+            className={cn(ui.TAB, tab !== id && ui.TAB_OFF)}
           >
             {label}
             {derived &&
@@ -94,22 +65,22 @@ export function Toolbar({
                     total: active.length,
                   })}
                 >
-                  <span className={ui.DOT_ON} />
+                  <StatusDot state="on" />
                   {online}/{active.length}
                 </span>
               ) : (
                 <span className={ui.TAB_COUNT}>{active.length}</span>
               ))}
-          </button>
+          </TabsTrigger>
         ))}
-      </div>
+      </TabsList>
       <div className={ui.TOOLBAR_RIGHT}>
         <div className={ui.SEARCH_WRAP}>
           <Search className={ui.SEARCH_ICON} />
-          <input
+          <Input
             type="text"
             enterKeyHint="search"
-            className={ui.cx(
+            className={cn(
               ui.SEARCH_INPUT,
               query ? ui.SEARCH_FILLED : ui.SEARCH_EMPTY,
             )}
@@ -134,16 +105,18 @@ export function Toolbar({
         </div>
         {tab === "nets" && (
           <>
-            <button
+            <Button
               ref={addButton}
               type="button"
-              className={ui.ICON_BTN}
+              variant="outline"
+              size="icon-lg"
+              className={ui.MUTED_BTN}
               title={t("admin.addNet")}
               aria-label={t("admin.addNet")}
               onClick={onAddNet}
             >
-              <Plus className={ui.ICON} />
-            </button>
+              <Plus />
+            </Button>
             <MoreMenu trigger={moreButton} items={menu} />
           </>
         )}

@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 
+import { Button } from "../components/ui/button";
 import { NS } from "../i18n";
 import * as ui from "../ui";
 import { bindingLabel } from "./ptt";
@@ -27,13 +28,15 @@ export function KeyLine({
       ) : (
         <>
           <span className={ui.NET_TAG}>{label}</span>
-          <button
+          <Button
             type="button"
-            className={ui.cx(ui.LINK_BTN, ui.LINK_MUTED)}
+            variant="ghost"
+            size="xs"
+            className={ui.MUTED_BTN}
             onClick={choose}
           >
             {t("talk.changeKey")}
-          </button>
+          </Button>
         </>
       )}
     </div>

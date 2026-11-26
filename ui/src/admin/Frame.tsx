@@ -2,6 +2,7 @@ import { ArrowLeft, X } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Button } from "../components/ui/button";
 import { NS, RAW } from "../i18n";
 import * as ui from "../ui";
 import type { TreeCtx } from "./types";
@@ -63,16 +64,18 @@ export function Frame({
         <div className={ui.DETAIL_HEAD}>
           {heading}
           {action}
-          <button
+          <Button
             type="button"
-            className={ui.ICON_BTN_GHOST}
+            variant="ghost"
+            size="icon"
+            className={ui.MUTED_BTN}
             data-testid="close-net"
             aria-label={t("admin.closeNet", { name, ...RAW })}
             title={t("admin.closeNet", { name, ...RAW })}
             onClick={close}
           >
-            <X className={ui.ICON} />
-          </button>
+            <X />
+          </Button>
         </div>
         {children}
       </section>
@@ -87,16 +90,17 @@ export function Frame({
       className={ui.VIEW}
     >
       <div className={ui.VIEW_BAR}>
-        <button
+        <Button
           type="button"
-          className={ui.BACK_BTN}
+          variant="ghost"
+          size="icon-lg"
           data-testid="back"
           aria-label={t("admin.back")}
           title={t("admin.back")}
           onClick={close}
         >
-          <ArrowLeft className={ui.ICON} />
-        </button>
+          <ArrowLeft />
+        </Button>
         {heading}
         {action}
       </div>

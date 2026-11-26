@@ -1,7 +1,9 @@
 import { AlertCircle, CheckCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { Alert, AlertDescription } from "../components/ui/alert";
 import { NS } from "../i18n";
+import { cn } from "../lib/utils";
 import * as ui from "../ui";
 
 export interface Notice {
@@ -19,21 +21,30 @@ export function NoticeLine({
   const { t } = useTranslation(NS);
   const error = notice.kind === "error";
   const Icon = error ? AlertCircle : CheckCircle;
+  // Only the icon takes the error's red, as in the other error lines
+  const tone = error ? "text-foreground" : "text-current";
   return (
-    <div
+    // A row, not the Alert's grid, so the dismiss button fits beside the words; they are a block so a long
+    // word wraps
+    <Alert
+      variant={error ? "destructive" : "default"}
       role={error ? "alert" : "status"}
-      className={ui.cx(ui.NOTICE, error ? ui.NOTICE_ERR : ui.NOTICE_OK)}
+      className={cn("flex", !error && ui.NOTICE_OK)}
     >
-      <Icon className={ui.cx(ui.NOTICE_ICON, error && ui.NOTICE_ICON_ERR)} />
-      <p className={ui.NOTICE_TEXT}>{notice.text}</p>
+      <Icon />
+      <AlertDescription
+        className={cn("block min-w-0 flex-1 break-words", tone)}
+      >
+        {notice.text}
+      </AlertDescription>
       <button
         type="button"
-        className={ui.NOTICE_X}
+        className={cn(ui.NOTICE_X, tone)}
         aria-label={t("admin.dismiss")}
         onClick={dismiss}
       >
         <X className={ui.ICON} />
       </button>
-    </div>
+    </Alert>
   );
 }
