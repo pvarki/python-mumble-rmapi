@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { StatusDot } from "@/components/StatusDot";
 import { Admin } from "./admin/Admin";
+import { OnboardingHandler } from "./guide/OnboardingHandler";
 import { addTranslations, NS } from "./i18n";
 import { cn } from "./lib/utils";
 import { MISSIONS, pathLabel } from "./paths";
@@ -17,8 +18,17 @@ export interface ClientData {
   nets?: string[];
 }
 
+// What rmui passes every remote about the signed-in user besides data
+export interface Meta {
+  callsign?: string;
+  // Whether guides may open by themselves, and the way to turn that off for every product
+  autoOpenGuides?: boolean;
+  onDisableGuides?: () => void;
+}
+
 interface Props {
   data?: ClientData;
+  meta?: Meta;
 }
 
 // The signed-in user's voice state and nets, readable without a click
@@ -56,11 +66,21 @@ function YouLine({ data }: { data: ClientData }) {
   );
 }
 
-function VoicePage({ data }: { data: ClientData }) {
+function VoicePage({ data, meta }: { data: ClientData; meta: Meta }) {
   const { t } = useTranslation(NS);
   return (
     <div className={ui.PAGE}>
-      <h1 className={ui.H1}>{t("title")}</h1>
+      <div className={ui.PAGE_HEAD}>
+        <h1 className={ui.H1}>{t("title")}</h1>
+        {/* rmui passes {} until rmapi answers, and the guide decides on mount whether it opens */}
+        {data.voice !== undefined && (
+          <OnboardingHandler
+            meta={meta}
+            voice={data.voice}
+            admin={!!data.admin}
+          />
+        )}
+      </div>
       <YouLine data={data} />
       {data.voice !== false && <Talk />}
       {data.admin && <Admin />}
@@ -68,7 +88,7 @@ function VoicePage({ data }: { data: ClientData }) {
   );
 }
 
-export default function MumbleApp({ data = {} }: Props) {
+export default function MumbleApp({ data = {}, meta = {} }: Props) {
   const { i18n } = useTranslation();
   const [ready, setReady] = useState(false);
 
@@ -76,5 +96,5 @@ export default function MumbleApp({ data = {} }: Props) {
     void addTranslations(i18n).then(() => setReady(true));
   }, [i18n]);
 
-  return ready ? <VoicePage data={data} /> : null;
+  return ready ? <VoicePage data={data} meta={meta} /> : null;
 }

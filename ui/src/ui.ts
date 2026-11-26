@@ -16,6 +16,7 @@ const HIT_AREA = "after:absolute after:-inset-2";
 const HIT = `relative ${HIT_AREA}`;
 
 export const PAGE = "mx-auto max-w-4xl space-y-6 p-4 md:p-6";
+export const PAGE_HEAD = "flex items-center justify-between gap-2";
 export const H1 = "text-2xl font-bold";
 
 // For a Button whose words or icon should stay in the background until hovered
@@ -207,3 +208,16 @@ export const TALK_PTT_BAR = "sticky bottom-0 z-10 space-y-2 bg-card py-2";
 // Keeps its line when nobody talks, so the button under a thumb never moves
 export const TALK_SPEAKING =
   "flex min-h-4 items-center gap-1.5 text-xs text-green-600";
+
+// The voice guide's dialog: the step's words, a progress bar and the buttons; it scrolls only on a tiny screen
+export const GUIDE = "max-h-[90vh] overflow-y-auto sm:max-w-md";
+export const GUIDE_HEAD = "flex items-start gap-2";
+export const GUIDE_TITLES = "min-w-0 flex-1 space-y-2";
+export const GUIDE_STEP = "font-semibold";
+export const GUIDE_TEXT = "leading-relaxed";
+export const GUIDE_BAR = "h-1.5 w-full overflow-hidden rounded-full bg-muted";
+export const GUIDE_FILL = "h-full bg-primary transition-all";
+export const GUIDE_BTNS = "flex gap-3";
+export const GUIDE_BTN = "flex-1";
+export const GUIDE_OFF =
+  "w-full justify-start text-xs font-normal text-muted-foreground hover:text-foreground";

@@ -19,6 +19,7 @@ void i18next
             voice: true,
             nets: ["/Units/10/101", "/Missions/PATROL-NORTH"],
           }}
+          meta={{ callsign: "DEV1", autoOpenGuides: true }}
         />
       </StrictMode>,
     ),

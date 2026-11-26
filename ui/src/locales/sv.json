@@ -151,5 +151,41 @@
       "lost": "Anslutningen bröts. Anslut igen.",
       "failed": "Anslutningen misslyckades."
     }
+  },
+  "guide": {
+    "open": "Röstguide",
+    "title": "Röstguide",
+    "step": "Steg {{n}} av {{count}}",
+    "back": "Tillbaka",
+    "next": "Nästa",
+    "finish": "Slutför",
+    "close": "Stäng guiden",
+    "disableAutoOpen": "Visa inte guider automatiskt för mig",
+    "steps": {
+      "intro": {
+        "title": "Tala i röstnät",
+        "description": "Röst fungerar som en radio: håll in PTT så hör alla i samma nät dig. Använd den här i webbläsaren, eller i telefonen med Voice-tillägget i ATAK, som du installerar från TAK-uppdateringsservern."
+      },
+      "join": {
+        "title": "Gå med i ett nät",
+        "description": "Tryck på Anslut till röst och tillåt mikrofonen. Välj sedan ett nät i listan, som visar de nät du får gå in i. Hörlurar förhindrar eko."
+      },
+      "talk": {
+        "title": "Tryck för att tala",
+        "description": "Håll in den stora knappen medan du talar, eller håll in PTT-tangenten: Tabb, eller valfri tangent eller musens sidoknapp som du väljer med Byt. Tangenten fungerar bara när den här webbläsarfliken är framme."
+      },
+      "nets": {
+        "title": "Vem är i vilket nät",
+        "description": "Enheter är din organisations nät; vart och ett är öppet för alla eller bara för sina medlemmar. Där den här miljön har uppdragsnät kommer Uppdrag från TAK: du kommer in i ett uppdrags nät strax efter att du prenumererar på uppdraget i ATAK Data Sync. Guard, under Uppdrag, är nödkanalen, öppen för alla. Team och Roller har ett nät för varje teamfärg och roll i ATAK, öppet för alla."
+      },
+      "units": {
+        "title": "Bygg enheternas nät",
+        "description": "Som administratör bygger du enheternas nät på fliken Nät nedan: lägg till nät och undernät, eller börja från en mall eller en kanalplan under Fler åtgärder. Öppna ett nät för att välja vem som kan använda det och lägga till dess medlemmar."
+      },
+      "fixed": {
+        "title": "Det du inte kan ändra här",
+        "description": "Uppdragens nät och deras prenumeranter kommer från TAK och kan bara visas här. Ett uppdrag får ett nät när någon prenumererar på det; lösenordsskyddade uppdrag får inget. Nät för Team och Roller är fasta. På fliken Användare kan du stänga av rösten för ett anropsnamn."
+      }
+    }
   }
 }

@@ -151,5 +151,41 @@
       "lost": "Yhteys katkesi. Liity uudelleen.",
       "failed": "Yhdistäminen epäonnistui."
     }
+  },
+  "guide": {
+    "open": "Puheen ohje",
+    "title": "Puheen ohje",
+    "step": "Vaihe {{n}} / {{count}}",
+    "back": "Takaisin",
+    "next": "Seuraava",
+    "finish": "Valmis",
+    "close": "Sulje ohje",
+    "disableAutoOpen": "Älä näytä minulle ohjeita automaattisesti",
+    "steps": {
+      "intro": {
+        "title": "Puhu puheverkoissa",
+        "description": "Puhe toimii kuin radio: pidä PTT pohjassa, niin kaikki samassa verkossa kuulevat sinut. Käytä sitä täällä selaimessa tai puhelimessa ATAKin Voice-liitännäisellä, jonka asennat TAKin päivityspalvelimelta."
+      },
+      "join": {
+        "title": "Liity verkkoon",
+        "description": "Paina Liity puheeseen ja salli mikrofoni. Valitse sitten verkko listasta, jossa ovat verkot, joihin pääset. Kuulokkeet estävät kaiun."
+      },
+      "talk": {
+        "title": "Puhu PTT:llä",
+        "description": "Pidä isoa painiketta painettuna puhuessasi tai pidä PTT-näppäintä pohjassa: Sarkain tai mikä tahansa näppäin tai hiiren sivupainike, jonka valitset Vaihda-painikkeella. Näppäin toimii vain, kun tämä selaimen välilehti on edessä."
+      },
+      "nets": {
+        "title": "Kuka on missäkin verkossa",
+        "description": "Yksiköt ovat organisaatiosi verkkoja; kukin on avoin kaikille tai vain jäsenilleen. Jos tässä ympäristössä on tehtävien verkot, Tehtävät tulevat TAKista: pääset tehtävän verkkoon pian sen jälkeen, kun tilaat tehtävän ATAKin Data Syncissä. Guard, Tehtävien alla, on hätäkanava, avoin kaikille. Tiimeissä ja Rooleissa on verkko kullekin ATAKin tiimivärille ja roolille, avoin kaikille."
+      },
+      "units": {
+        "title": "Rakenna yksiköiden verkot",
+        "description": "Ylläpitäjänä rakennat yksiköiden verkot alla Verkot-välilehdellä: lisää verkkoja ja aliverkkoja tai aloita mallista tai kanavasuunnitelmasta Muut toiminnot -valikosta. Avaa verkko valitaksesi, kuka voi käyttää sitä, ja lisätäksesi sen jäsenet."
+      },
+      "fixed": {
+        "title": "Mitä täällä ei voi muuttaa",
+        "description": "Tehtävien verkot ja niiden tilaajat tulevat TAKista, ja täällä niitä voi vain katsoa. Tehtävä saa verkon, kun joku tilaa sen; salasanalla suojatut tehtävät eivät saa verkkoa. Tiimien ja roolien verkot ovat kiinteät. Käyttäjät-välilehdellä voit estää puheen tunnukselta."
+      }
+    }
   }
 }

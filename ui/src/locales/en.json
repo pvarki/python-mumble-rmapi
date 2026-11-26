@@ -151,5 +151,41 @@
       "lost": "The connection dropped. Join again.",
       "failed": "Could not connect."
     }
+  },
+  "guide": {
+    "open": "Voice guide",
+    "title": "Voice guide",
+    "step": "Step {{n}} / {{count}}",
+    "back": "Back",
+    "next": "Next",
+    "finish": "Finish",
+    "close": "Close the guide",
+    "disableAutoOpen": "Do not show me guides automatically",
+    "steps": {
+      "intro": {
+        "title": "Talk in voice nets",
+        "description": "Voice works like a radio: hold push-to-talk and everyone in the same net hears you. Use it here in the browser, or on your phone with the Voice plugin in ATAK, installed from the TAK update server."
+      },
+      "join": {
+        "title": "Join a net",
+        "description": "Press Join voice and allow the microphone. Then pick a net from the list, which shows the nets you may enter. Headphones prevent echo."
+      },
+      "talk": {
+        "title": "Push to talk",
+        "description": "Hold the big button while you speak, or hold the PTT key: Tab, or any key or side mouse button you choose with Change. The key works only while this browser tab is in front."
+      },
+      "nets": {
+        "title": "Who is in which net",
+        "description": "Units are your organisation's nets; each is open to everyone or to its members only. Where this deployment has mission nets, Missions come from TAK: you can enter a mission's net shortly after you subscribe to the mission in ATAK Data Sync. Guard, under Missions, is the emergency net, open to everyone. Teams and Roles have a net for each ATAK team colour and role, open to everyone."
+      },
+      "units": {
+        "title": "Build the unit nets",
+        "description": "As an admin you build the unit nets on the Nets tab below: add nets and sub-nets, or start from a template or a channel plan under More actions. Open a net to choose who can use it and to add its members."
+      },
+      "fixed": {
+        "title": "What you cannot change here",
+        "description": "Mission nets and their subscribers come from TAK and are read-only here. A mission gets a net once someone subscribes to it; password-protected missions get none. The Teams and Roles nets are fixed. On the Users tab you can turn voice off for a callsign."
+      }
+    }
   }
 }
