@@ -2,9 +2,8 @@
 import type { Access, Channel, Mission, User } from "@/api";
 import { MISSIONS, UNITS } from "@/paths";
 
-// Who may use a net, from its access and the nets above it. A members-only net admits its members and those
-// of every members-only net above it, even across open nets in between; an inherit net follows the nearest net
-// above that sets its own access, which at the top level means open.
+// Who may use a net. Members-only admits the members of every members-only net above it too; inherit follows
+// the nearest net above that sets its own access, open at the top.
 export type Rule =
   | { kind: "open" }
   | { kind: "members" }
@@ -17,7 +16,6 @@ export interface NetNode {
   parentId: number;
   depth: number;
   rule: Rule;
-  // The nearest net above that sets its own access: what 'inherit' would follow
   above: Setter | null;
   // Callsigns connected to this net now
   online: string[];
@@ -182,7 +180,7 @@ export function deriveTree(
   };
 }
 
-// The Käyttäjät list: non-revoked users matching the search, A–Z, so presence never moves a row
+// Non-revoked users matching the search, A–Z, so presence never moves a row
 export function listUsers(users: User[], query: string): User[] {
   const q = query.trim().toLowerCase();
   return users

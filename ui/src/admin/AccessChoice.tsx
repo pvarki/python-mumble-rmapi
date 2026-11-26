@@ -31,7 +31,6 @@ export function AccessChoice({
   const { id, access } = node.channel;
   const labelId = useId();
   const choices = node.depth ? CHOICES : CHOICES.slice(0, 2);
-  const current = choices.some(([value]) => value === access) ? access : "open";
   return (
     <div className="block space-y-1">
       <span id={labelId} className="block text-xs text-muted-foreground">
@@ -40,8 +39,8 @@ export function AccessChoice({
       <ToggleGroup.Root
         ref={group}
         type="single"
-        value={current}
-        onValueChange={(v) => v && v !== current && onChoose(v as Access)}
+        value={access}
+        onValueChange={(v) => v && v !== access && onChoose(v as Access)}
         aria-labelledby={labelId}
         className="inline-flex h-12 w-full items-center rounded-lg bg-muted p-px"
       >
@@ -54,7 +53,7 @@ export function AccessChoice({
             // Chosen in JS: rmui's CSS has data-[state=on] only with accent, which follows the theme
             className={cn(
               "inline-flex h-[calc(100%-1px)] min-w-0 grow items-center justify-center whitespace-nowrap rounded-md px-1.5 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:opacity-50",
-              value === current
+              value === access
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
             )}

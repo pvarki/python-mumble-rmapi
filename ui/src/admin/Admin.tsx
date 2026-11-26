@@ -135,7 +135,7 @@ export function Admin() {
     setOpen(null);
   };
 
-  // Panels and forms would take focus again when Verkot is shown, so they close with the tab
+  // Panels and forms would take focus again when the Nets tab is shown, so they close with the tab
   const pickTab = (next: Tab) => {
     focus.askRow(null);
     setTop(null);
@@ -151,7 +151,7 @@ export function Admin() {
     setQuery(next);
   };
 
-  // The search would hide the form behind 'Ei osumia' and filter out the new net, so it is cleared first
+  // The search would hide the form behind the no-matches line and filter out the new net, so it is cleared first
   const openTop = (next: Exclude<Top, null>) => {
     search("");
     setOpen(null);
@@ -240,7 +240,7 @@ export function Admin() {
     takeTitleFocus: focus.takeTitleFocus,
   };
 
-  // While a net is open on Verkot, the one notice slot sits at the top of its details, where the action was
+  // While a net is open on the Nets tab, the one notice slot sits at the top of its details, where the action was
   const noticeLine = notice && (
     <NoticeLine notice={notice} dismiss={() => showNotice(null)} />
   );

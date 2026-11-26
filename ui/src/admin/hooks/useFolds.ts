@@ -7,27 +7,16 @@ const FOLDS_KEY = "mumble.folds";
 // Larger plans start collapsed to the top level
 const EXPAND_UP_TO = 30;
 
-// The fold choices by channel id; anything malformed is ignored
 function readFolds(): Map<number, boolean> {
   try {
-    const raw: unknown = JSON.parse(read(FOLDS_KEY) ?? "{}");
-    if (
-      raw &&
-      typeof raw === "object" &&
-      !Array.isArray(raw) &&
-      Object.values(raw).every((v) => typeof v === "boolean")
-    ) {
-      return new Map(
-        Object.entries(raw as Record<string, boolean>).map(([id, open]) => [
-          Number(id),
-          open,
-        ]),
-      );
-    }
+    const raw = read(FOLDS_KEY) ?? "{}";
+    const saved = JSON.parse(raw) as Record<string, boolean>;
+    return new Map(
+      Object.entries(saved).map(([id, open]) => [Number(id), open]),
+    );
   } catch {
-    // not JSON
+    return new Map();
   }
-  return new Map();
 }
 
 function saveFolds(folds: Map<number, boolean>) {

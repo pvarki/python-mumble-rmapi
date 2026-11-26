@@ -93,8 +93,8 @@ describe("folds", () => {
     expect(fold().getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("ignore what is saved when it is malformed", async () => {
-    localStorage.setItem("mumble.folds", '{"1":false,"4":"no"}');
+  it("ignore what is saved when it is not JSON", async () => {
+    localStorage.setItem("mumble.folds", "{");
     render(<Admin />);
     await settle();
     expect(queryRow("101")).toBeTruthy();

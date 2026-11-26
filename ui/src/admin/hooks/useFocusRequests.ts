@@ -1,7 +1,6 @@
 import { useRef } from "react";
 
-// A row control asked to take focus once it is rendered: the row itself, or the chevron of the folded card
-// that hides it. center scrolls it to mid-screen first (back from a phone's net screen).
+// A net's row, or the chevron of the folded card that hides it; center scrolls it to mid-screen first
 export interface FocusTarget {
   key: string;
   part: "row" | "fold";

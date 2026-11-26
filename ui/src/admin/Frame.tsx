@@ -24,7 +24,6 @@ export function Frame({
   path: string;
   name: string;
   testId: string;
-  // A button beside the title, such as editing the net
   action?: ReactNode;
   children: ReactNode;
 }) {

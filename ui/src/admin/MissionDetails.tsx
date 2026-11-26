@@ -12,7 +12,6 @@ import { InNet } from "./InNet";
 import type { MissionNode } from "./tree";
 import type { TreeCtx } from "./types";
 
-// Read-only: subscribers are managed in ATAK Data Sync
 export function MissionDetails({
   node,
   ctx,

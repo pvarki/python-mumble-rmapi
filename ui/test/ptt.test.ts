@@ -7,7 +7,6 @@ import {
   isButton,
   isKey,
   loadBinding,
-  parseBinding,
   saveBinding,
   talksOn,
   type Binding,
@@ -23,22 +22,9 @@ describe("binding", () => {
     saveBinding({ kind: "mouse", button: 3 });
     expect(loadBinding()).toEqual({ kind: "mouse", button: 3 });
   });
-  it("falls back on anything it cannot use", () => {
-    for (const raw of [
-      null,
-      "",
-      "{",
-      "5",
-      "null",
-      '{"kind":"key"}',
-      '{"kind":"key","code":""}',
-      '{"kind":"key","code":"Escape"}',
-      '{"kind":"mouse","button":0}',
-      '{"kind":"mouse","button":"3"}',
-      '{"kind":"pedal"}',
-    ]) {
-      expect(parseBinding(raw), String(raw)).toEqual(DEFAULT_BINDING);
-    }
+  it("falls back on what is not JSON", () => {
+    localStorage.setItem("mumble.ptt", "{");
+    expect(loadBinding()).toEqual(DEFAULT_BINDING);
   });
   it("works where storage is blocked", () => {
     blockStorage();

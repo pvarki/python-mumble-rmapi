@@ -55,7 +55,7 @@ export function NetDetails({
   const removeNet = useRef<HTMLButtonElement>(null);
   const editNet = useRef<HTMLButtonElement>(null);
   const accessGroup = useRef<HTMLDivElement>(null);
-  // After a chip's x removes it, focus moves to the next chip's x, or to '+ Jäsen'
+  // After a chip's x removes it, focus moves to the next chip's x, or to the add-member button
   const refocus = useRef<{ callsign: string; index: number } | null>(null);
   const returnTo = useRef<ReturnTo | null>(null);
 
@@ -114,9 +114,8 @@ export function NetDetails({
     }
   };
 
-  // Members only on a net with nobody in it would lock everyone out, the people about to be added too, so the
-  // picker opens instead: the first member makes the net members-only. A change that lets fewer people in asks
-  // first while anyone is connected.
+  // Members-only with no members would lock everyone out, so the picker opens and the first member sets it.
+  // Narrowing access asks first while anyone is connected.
   const admitsAll = (access: Access) =>
     access === "open" || (access === "inherit" && !node.above?.invite);
   const chooseAccess = (next: Access) => {

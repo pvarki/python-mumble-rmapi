@@ -1,6 +1,3 @@
-// Voice in the browser: join a net and talk with push-to-talk, on a laptop or a phone (VOICE-PLAN §4.10).
-// Push-to-talk is the big button or a key or mouse button the user picks; it works only while this tab has
-// focus, and losing focus lets go.
 import { Loader2, Mic } from "lucide-react";
 import {
   useCallback,
@@ -27,8 +24,7 @@ export function Talk() {
   const s = useSyncExternalStore(client.subscribe, client.getSnapshot);
   const [binding, setBinding] = useState(loadBinding);
   const [choosing, setChoosing] = useState(false);
-  // This browser's id, read on the first click (not while rendering) and kept for the page even where storage
-  // throws, so every join from this page logs in the same slot
+  // Read on the first click and kept, so every join from this page logs in the same slot
   const browser = useRef<string | null>(null);
   const connect = () => {
     browser.current ??= loadBrowser();

@@ -6,8 +6,7 @@ import type { Template } from "@/api";
 import { Button } from "@/components/ui/button";
 import { NS, RAW } from "@/i18n";
 
-// The channel plan templates on offer, at the top of the net list. Applying one adds the nets it has that are
-// missing, so it is safe on a plan already in use.
+// Applying a template adds only the nets that are missing, so it is safe on a plan already in use
 export function TemplatePanel({
   templates,
   hasNets,

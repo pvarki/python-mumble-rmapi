@@ -81,7 +81,6 @@ export function netPath(nets: ReadonlyMap<number, Net>, id: number): string {
     net = nets.get(net.parent)
   ) {
     names.unshift(net.name);
-    if (names.length > 32) break; // a loop in a broken tree
   }
   return names.join(" › ");
 }

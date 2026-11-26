@@ -29,7 +29,6 @@ interface Props {
   meta?: Meta;
 }
 
-// The signed-in user's voice state and nets, readable without a click
 function YouLine({ data }: { data: ClientData }) {
   const { t } = useTranslation(NS);
   const nets = data.nets ?? [];

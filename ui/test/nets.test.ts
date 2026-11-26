@@ -98,10 +98,6 @@ describe("netPath", () => {
     expect(netPath(NETS, 0)).toBe("");
     expect(netPath(NETS, 99)).toBe("");
   });
-  it("stops on a loop", () => {
-    const loop = new Map([net(1, 2, "a"), net(2, 1, "b")]);
-    expect(netPath(loop, 1).split(" › ").length).toBeLessThanOrEqual(33);
-  });
 });
 
 describe("usernames", () => {

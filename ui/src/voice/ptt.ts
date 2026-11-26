@@ -12,36 +12,14 @@ export const DEFAULT_BINDING: Binding = { kind: "key", code: "Tab" };
 export const MOUSE_BUTTONS = [1, 3, 4];
 const BINDING_KEY = "mumble.ptt";
 
-export function parseBinding(raw: string | null): Binding {
-  if (!raw) return DEFAULT_BINDING;
+export function loadBinding(): Binding {
+  const raw = read(BINDING_KEY);
   try {
-    const value: unknown = JSON.parse(raw);
-    if (value && typeof value === "object" && "kind" in value) {
-      if (
-        value.kind === "key" &&
-        "code" in value &&
-        typeof value.code === "string" &&
-        value.code !== "" &&
-        value.code !== "Escape"
-      ) {
-        return { kind: "key", code: value.code };
-      }
-      if (
-        value.kind === "mouse" &&
-        "button" in value &&
-        typeof value.button === "number" &&
-        MOUSE_BUTTONS.includes(value.button)
-      ) {
-        return { kind: "mouse", button: value.button };
-      }
-    }
+    return raw ? (JSON.parse(raw) as Binding) : DEFAULT_BINDING;
   } catch {
-    // fall through to the default
+    return DEFAULT_BINDING;
   }
-  return DEFAULT_BINDING;
 }
-
-export const loadBinding = (): Binding => parseBinding(read(BINDING_KEY));
 
 export function saveBinding(binding: Binding): void {
   write(BINDING_KEY, JSON.stringify(binding));
