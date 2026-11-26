@@ -2,8 +2,9 @@ import { useTranslation } from "react-i18next";
 
 import { api, type User } from "../api";
 import { NS, RAW } from "../i18n";
-import { listUsers, pathLabel } from "../paths";
+import { pathLabel } from "../paths";
 import * as ui from "../ui";
+import { listUsers } from "./tree";
 import type { Run } from "./types";
 
 // The state shown always comes from the server after the reload: no optimistic flip

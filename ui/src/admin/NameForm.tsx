@@ -1,0 +1,85 @@
+import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { NS } from "../i18n";
+import { Loader, X } from "../icons";
+import * as ui from "../ui";
+
+// Adds are keyed per name, so several can be in flight; the form only shows that one is
+export function adding(pending: Set<string>, parent: number): boolean {
+  return [...pending].some((key) => key.startsWith(`add:${parent}:`));
+}
+
+// A new top-level net or sub-net. Stays open after a success so the next squad is one more Enter.
+export function NameForm({
+  placeholder,
+  busy,
+  onSubmit,
+  onCancel,
+}: {
+  placeholder: string;
+  busy: boolean;
+  onSubmit: (name: string) => Promise<boolean>;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation(NS);
+  const [name, setName] = useState("");
+  const input = useRef<HTMLInputElement>(null);
+  const ready = name.trim() !== "";
+  // The field empties at once, so the next squad can be typed while this one is still being saved;
+  // a failed name comes back unless something new has been typed meanwhile.
+  const submit = () => {
+    const sent = name.trim();
+    if (!sent) return;
+    setName("");
+    input.current?.focus();
+    void onSubmit(sent).then((ok) => {
+      if (!ok) setName((current) => (current === "" ? sent : current));
+    });
+  };
+  return (
+    <div className={ui.FORM}>
+      <input
+        ref={input}
+        autoFocus
+        type="text"
+        className={ui.INPUT_SM}
+        value={name}
+        placeholder={placeholder}
+        aria-label={placeholder}
+        onChange={(event) => setName(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            submit();
+          } else if (event.key === "Escape") {
+            event.stopPropagation();
+            onCancel();
+          }
+        }}
+      />
+      {ready ? (
+        <button
+          type="button"
+          className={ui.cx(ui.BTN_SM, ui.SM_PRIMARY)}
+          onClick={submit}
+        >
+          {busy && <Loader className={ui.LOADER} />}
+          {t("admin.add")}
+        </button>
+      ) : (
+        <button type="button" className={ui.SM_INERT} aria-disabled="true">
+          {t("admin.add")}
+        </button>
+      )}
+      <button
+        type="button"
+        className={ui.ICON_BTN_GHOST}
+        aria-label={t("admin.cancel")}
+        onClick={onCancel}
+      >
+        <X className={ui.ICON} />
+      </button>
+    </div>
+  );
+}

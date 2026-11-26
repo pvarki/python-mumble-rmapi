@@ -1,4 +1,5 @@
-// The push-to-talk binding and this browser's id, both remembered per browser
+// The push-to-talk binding, remembered per browser
+import { read, write } from "../lib/storage";
 
 // A key by its physical position (KeyboardEvent.code), so the layout does not matter, or an extra mouse
 // button. Bluetooth PTT buttons that act as keyboards arrive as keys too.
@@ -10,28 +11,6 @@ export const DEFAULT_BINDING: Binding = { kind: "key", code: "Tab" };
 // Middle and the two side buttons; the primary and context buttons stay with the page
 export const MOUSE_BUTTONS = [1, 3, 4];
 const BINDING_KEY = "mumble.ptt";
-const BROWSER_KEY = "mumble.browser";
-// As mumblermapi's TicketRequest.browser accepts it
-const BROWSER_ID = /^[A-Za-z0-9-]{16,64}$/;
-
-// Storage can be missing or throw (private windows, blocked site data); the defaults then apply.
-type Store = Pick<Storage, "getItem" | "setItem">;
-
-function read(store: Store | null, key: string): string | null {
-  try {
-    return store?.getItem(key) ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function write(store: Store | null, key: string, value: string): void {
-  try {
-    store?.setItem(key, value);
-  } catch {
-    // remembered for this page only
-  }
-}
 
 export function parseBinding(raw: string | null): Binding {
   if (!raw) return DEFAULT_BINDING;
@@ -62,11 +41,10 @@ export function parseBinding(raw: string | null): Binding {
   return DEFAULT_BINDING;
 }
 
-export const loadBinding = (store: Store | null): Binding =>
-  parseBinding(read(store, BINDING_KEY));
+export const loadBinding = (): Binding => parseBinding(read(BINDING_KEY));
 
-export function saveBinding(store: Store | null, binding: Binding): void {
-  write(store, BINDING_KEY, JSON.stringify(binding));
+export function saveBinding(binding: Binding): void {
+  write(BINDING_KEY, JSON.stringify(binding));
 }
 
 // "Tab", "A", "1", "F12", "Numpad0", "Mouse 4"; the caller translates named keys such as Tab
@@ -96,13 +74,3 @@ export const talksOn = (binding: Binding, e: KeyLike): boolean =>
 
 export const isButton = (binding: Binding, button: number): boolean =>
   binding.kind === "mouse" && binding.button === button;
-
-// A random id this browser keeps. mumblermapi gives each of a person's browsers its own web slot by it, so a
-// laptop and a phone can be in voice at once; a second tab in the same browser takes over from the first.
-export function loadBrowser(store: Store | null, fresh: () => string): string {
-  const stored = read(store, BROWSER_KEY);
-  if (stored !== null && BROWSER_ID.test(stored)) return stored;
-  const id = fresh();
-  write(store, BROWSER_KEY, id);
-  return id;
-}

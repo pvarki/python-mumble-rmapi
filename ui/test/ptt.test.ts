@@ -1,4 +1,4 @@
-// The push-to-talk binding and the browser id
+// The push-to-talk binding
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,40 +7,21 @@ import {
   isButton,
   isKey,
   loadBinding,
-  loadBrowser,
   parseBinding,
   saveBinding,
   talksOn,
   type Binding,
 } from "../src/voice/ptt";
-
-function memory() {
-  const data = new Map<string, string>();
-  return {
-    data,
-    getItem: (k: string) => data.get(k) ?? null,
-    setItem: (k: string, v: string) => data.set(k, v),
-  };
-}
-
-const broken = {
-  getItem(): string | null {
-    throw new Error("blocked");
-  },
-  setItem() {
-    throw new Error("blocked");
-  },
-};
+import { blockStorage } from "./storage";
 
 describe("binding", () => {
   it("defaults to Tab and survives a round trip", () => {
-    const store = memory();
-    expect(loadBinding(store)).toEqual({ kind: "key", code: "Tab" });
+    expect(loadBinding()).toEqual({ kind: "key", code: "Tab" });
     expect(DEFAULT_BINDING).toEqual({ kind: "key", code: "Tab" });
-    saveBinding(store, { kind: "key", code: "F12" });
-    expect(loadBinding(store)).toEqual({ kind: "key", code: "F12" });
-    saveBinding(store, { kind: "mouse", button: 3 });
-    expect(loadBinding(store)).toEqual({ kind: "mouse", button: 3 });
+    saveBinding({ kind: "key", code: "F12" });
+    expect(loadBinding()).toEqual({ kind: "key", code: "F12" });
+    saveBinding({ kind: "mouse", button: 3 });
+    expect(loadBinding()).toEqual({ kind: "mouse", button: 3 });
   });
   it("falls back on anything it cannot use", () => {
     for (const raw of [
@@ -59,10 +40,10 @@ describe("binding", () => {
       expect(parseBinding(raw), String(raw)).toEqual(DEFAULT_BINDING);
     }
   });
-  it("works without storage", () => {
-    expect(loadBinding(broken)).toEqual(DEFAULT_BINDING);
-    expect(loadBinding(null)).toEqual(DEFAULT_BINDING);
-    saveBinding(broken, { kind: "key", code: "KeyT" });
+  it("works where storage is blocked", () => {
+    blockStorage();
+    expect(loadBinding()).toEqual(DEFAULT_BINDING);
+    expect(() => saveBinding({ kind: "key", code: "KeyT" })).not.toThrow();
   });
   it("labels keys and buttons", () => {
     expect(bindingLabel({ kind: "key", code: "KeyT" })).toBe("T");
@@ -111,36 +92,5 @@ describe("talksOn", () => {
         press("ShiftLeft", { shiftKey: true }),
       ),
     ).toBe(true);
-  });
-});
-
-describe("browser", () => {
-  const id = "laptop-browser-01";
-  it("keeps a valid stored id", () => {
-    const store = memory();
-    store.setItem("mumble.browser", id);
-    expect(loadBrowser(store, () => expect.unreachable("fresh"))).toBe(id);
-  });
-  it("replaces a missing or malformed id and stores the new one", () => {
-    for (const bad of [
-      null,
-      "",
-      "a".repeat(15),
-      "a".repeat(65),
-      "laptop_browser_01",
-      "laptop-browser-01\n",
-    ]) {
-      const store = memory();
-      if (bad !== null) store.setItem("mumble.browser", bad);
-      expect(
-        loadBrowser(store, () => id),
-        String(bad),
-      ).toBe(id);
-      expect(store.data.get("mumble.browser")).toBe(id);
-    }
-  });
-  it("gives a fresh id without storage", () => {
-    expect(loadBrowser(broken, () => id)).toBe(id);
-    expect(loadBrowser(null, () => id)).toBe(id);
   });
 });

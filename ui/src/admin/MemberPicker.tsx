@@ -4,8 +4,9 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api";
 import { NS } from "../i18n";
 import { X } from "../icons";
-import { suggest, type NetNode } from "../paths";
 import * as ui from "../ui";
+import { memberKey } from "./MemberChips";
+import { suggest, type NetNode } from "./tree";
 import type { TreeCtx } from "./types";
 
 // Type-to-filter suggestions instead of a 150-option select, as an ARIA combobox: focus stays in the input,
@@ -29,7 +30,6 @@ export function MemberPicker({
   const listId = useId();
   const id = node.channel.id;
   const hits = suggest(ctx.users, node.channel.members, text);
-  const keyOf = (callsign: string) => `mem:${id}:${callsign}`;
   const typed = text.trim() !== "";
   const expanded = typed && hits.length > 0 && !dismissed;
   const current = expanded ? Math.min(active, hits.length - 1) : -1;
@@ -42,7 +42,7 @@ export function MemberPicker({
     setActive(0);
     input.current?.focus();
     void ctx
-      .run(keyOf(callsign), () => api.addMember(id, callsign))
+      .run(memberKey(id, callsign), () => api.addMember(id, callsign))
       .then((ok) => {
         if (!ok) setText((now) => (now === "" ? sent : now));
       });
@@ -114,7 +114,9 @@ export function MemberPicker({
               id={optionId(index)}
               role="option"
               aria-selected={index === current}
-              aria-disabled={ctx.pending.has(keyOf(user.callsign)) || undefined}
+              aria-disabled={
+                ctx.pending.has(memberKey(id, user.callsign)) || undefined
+              }
               className={ui.cx(
                 ui.CHIP_PICK,
                 index === current ? ui.CHIP_PICK_FIRST : ui.CHIP_PICK_REST,

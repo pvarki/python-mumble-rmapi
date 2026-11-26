@@ -1,5 +1,17 @@
-import type { Access, User } from "../api";
-import type { Derived } from "../paths";
+import type { Access, Channel, Mission, User } from "../api";
+import type { FocusTarget } from "./hooks/useFocusRequests";
+import type { Derived } from "./tree";
+
+export type Tab = "nets" | "users";
+
+// What shows at the top of the net list: a new net's name, the template chooser, or removing the whole plan
+export type Top = "net" | "templates" | "clear" | null;
+
+export interface Data {
+  channels: Channel[];
+  users: User[];
+  missions: Mission[];
+}
 
 // What the one open net shows; { last } is the guard before removing the last member, { access } the one
 // before an access change that moves connected people out
@@ -16,14 +28,6 @@ export type Mode =
 export interface Open {
   key: string;
   mode: Mode;
-}
-
-// A row control asked to take focus once it is rendered: the row itself, or the chevron of the folded card
-// that hides it. center scrolls it to mid-screen first (back from a phone's net screen).
-export interface FocusTarget {
-  key: string;
-  part: "row" | "fold";
-  center: boolean;
 }
 
 // Runs one admin request. Only the control whose key is pending is disabled; resolves true on success.
