@@ -43,7 +43,7 @@ def _extended(language: str, texts: dict[str, str]) -> ProductDescriptionExtende
         icon=f"{UI_PATH[1:]}/voicelogo.svg",
         description=texts[language],
         language=language,
-        docs=None,
+        docs=f"https://docs.opendefence.fi/{language}/guides/voice-guide",
         component=ProductComponent(type="component", ref=f"{UI_PATH}/remoteEntry.js"),
     )
 

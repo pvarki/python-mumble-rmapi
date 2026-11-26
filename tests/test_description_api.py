@@ -23,3 +23,12 @@ def test_v2_descriptions(client: TestClient) -> None:
     assert remote.status_code == 200 and "javascript" in remote.headers["content-type"]
     assert remote.headers["cache-control"] == "no-cache"  # a new release shows on the next load
     assert client.get("/ui/mumble/%2e%2e/templates/company.yaml").status_code == 404
+
+
+def test_v2_descriptions_link_the_voice_guide(client: TestClient) -> None:
+    """Both entries link the guide in their language; unknown languages get the English page"""
+    guide = "https://docs.opendefence.fi/{}/guides/voice-guide"
+    for language in ("fi", "sv", "en"):
+        assert client.get(f"/api/v2/description/{language}").json()["docs"] == guide.format(language)
+    assert client.get("/api/v2/description/de").json()["docs"] == guide.format("en")
+    assert client.get("/api/v2/admin/description/en").json()["docs"] == guide.format("en")
