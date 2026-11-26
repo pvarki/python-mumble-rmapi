@@ -10,6 +10,11 @@ await i18next
   .init({ lng: "en", resources: {}, showSupportNotice: false });
 await addTranslations(i18next);
 
+// Between user events Testing Library lets the clock run only where it finds Jest's fake timers
+Object.assign(globalThis, {
+  jest: { advanceTimersByTime: (ms: number) => vi.advanceTimersByTime(ms) },
+});
+
 afterEach(() => {
   cleanup();
   localStorage.clear();
