@@ -13,6 +13,7 @@ dependencies = [
     "libpvarki>=2.2,<3.0",
     "psycopg2-binary>=2.9,<3.0",
     "pydantic>=2.14,<3.0",
+    "pydantic-settings>=2.8,<3.0",
     "pyyaml>=6.0,<7.0",
     "sqlmodel>=0.0.37,<1.0",
     "uvicorn>=0.30,<1.0",

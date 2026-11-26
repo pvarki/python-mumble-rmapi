@@ -2,35 +2,24 @@
 
 from __future__ import annotations
 
-import os
-from collections.abc import Mapping
-from dataclasses import dataclass, field
 from functools import cache
 
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL, Engine
 from sqlmodel import create_engine
 
 
-@dataclass(frozen=True)
-class DatabaseSettings:
-    """The parts of the DSN, as the keys of CloudNativePG's app secret hold them"""
+class DatabaseSettings(BaseSettings):
+    """The parts of the DSN, as the keys of CloudNativePG's app secret hold them; MUMBLERMAPI_DATABASE_* variables"""
 
     host: str = "mumble-postgres-rw"
     port: int = 5432
     name: str = "mumble"
     user: str = "mumble"
-    password: str = field(default="", repr=False)
+    password: str = Field(default="", repr=False)
 
-    @classmethod
-    def from_env(cls, env: Mapping[str, str] = os.environ) -> DatabaseSettings:
-        """MUMBLERMAPI_DATABASE_* variables"""
-        return cls(
-            host=env.get("MUMBLERMAPI_DATABASE_HOST", cls.host),
-            port=int(env.get("MUMBLERMAPI_DATABASE_PORT", cls.port)),
-            name=env.get("MUMBLERMAPI_DATABASE_NAME", cls.name),
-            user=env.get("MUMBLERMAPI_DATABASE_USER", cls.user),
-            password=env.get("MUMBLERMAPI_DATABASE_PASSWORD", cls.password),
-        )
+    model_config = SettingsConfigDict(env_prefix="MUMBLERMAPI_DATABASE_", frozen=True)
 
     @property
     def url(self) -> URL:

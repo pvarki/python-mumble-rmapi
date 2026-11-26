@@ -78,7 +78,7 @@ def main() -> None:  # pragma: no cover  # the container entrypoint
     """murmur-agent entrypoint"""
     add_trace_and_audit()
     init_logging(logging.INFO)
-    config = AgentConfig.from_env()
+    config = AgentConfig()
     stop = threading.Event()
     for signum in (signal.SIGTERM, signal.SIGINT):
         signal.signal(signum, lambda *_: stop.set())

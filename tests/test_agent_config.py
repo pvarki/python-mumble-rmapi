@@ -9,35 +9,42 @@ from mumblermapi.agent.config import AgentConfig
 FAKE_SECRET = "not-a-real-ice-secret"  # nosec B105  # pragma: allowlist secret
 
 
-def test_defaults() -> None:
-    """Only the secret is required"""
-    config = AgentConfig.from_env({"MURMUR_ICE_SECRET": FAKE_SECRET})
-    assert config == AgentConfig(ice_secret=FAKE_SECRET)
-    assert config.ocsp_url is None
+def config(monkeypatch: pytest.MonkeyPatch, **env: str) -> AgentConfig:
+    """The settings with these variables set"""
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    return AgentConfig()
 
 
-def test_overrides() -> None:
+def test_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Only the secret is required, and an empty variable leaves an optional setting unset"""
+    empty = ("MURMUR_SERVER_ID", "AGENT_OCSP_URL", "AGENT_STATE_URL", "AGENT_PRESENCE_URL", "AGENT_GATEWAY_CA")
+    settings = config(monkeypatch, MURMUR_ICE_SECRET=FAKE_SECRET, **dict.fromkeys(empty, ""))
+    assert settings == AgentConfig.model_construct(ice_secret=FAKE_SECRET)
+    assert settings.ocsp_url is None
+
+
+def test_overrides(monkeypatch: pytest.MonkeyPatch) -> None:
     """Every setting can come from the environment"""
-    config = AgentConfig.from_env(
-        {
-            "MURMUR_ICE_SECRET": FAKE_SECRET,
-            "MURMUR_ICE_HOST": "10.0.0.1",
-            "MURMUR_ICE_PORT": "7000",
-            "AGENT_CALLBACK_PORT": "7001",
-            "MURMUR_SERVER_ID": "2",
-            "AGENT_CA_BUNDLE": "/ca.pem",
-            "AGENT_CHANNELS_FILE": "/c.yaml",
-            "AGENT_DATA_DIR": "/d",
-            "AGENT_OCSP_URL": "http://ocsp",
-            "AGENT_OCSP_CACHE_SECONDS": "10",
-            "AGENT_SWEEP_SECONDS": "5",
-            "AGENT_STATE_URL": "http://mumblermapi/api/v1/agent/state",
-            "AGENT_POLL_SECONDS": "2",
-            "AGENT_PRESENCE_URL": "http://mumblermapi/api/v1/agent/presence",
-            "AGENT_GATEWAY_CA": "/gateway/ca.crt",
-        }
+    settings = config(
+        monkeypatch,
+        MURMUR_ICE_SECRET=FAKE_SECRET,
+        MURMUR_ICE_HOST="10.0.0.1",
+        MURMUR_ICE_PORT="7000",
+        AGENT_CALLBACK_PORT="7001",
+        MURMUR_SERVER_ID="2",
+        AGENT_CA_BUNDLE="/ca.pem",
+        AGENT_CHANNELS_FILE="/c.yaml",
+        AGENT_DATA_DIR="/d",
+        AGENT_OCSP_URL="http://ocsp",
+        AGENT_OCSP_CACHE_SECONDS="10",
+        AGENT_SWEEP_SECONDS="5",
+        AGENT_STATE_URL="http://mumblermapi/api/v1/agent/state",
+        AGENT_POLL_SECONDS="2",
+        AGENT_PRESENCE_URL="http://mumblermapi/api/v1/agent/presence",
+        AGENT_GATEWAY_CA="/gateway/ca.crt",
     )
-    assert config == AgentConfig(
+    assert settings == AgentConfig.model_construct(
         ice_secret=FAKE_SECRET,
         ice_host="10.0.0.1",
         ice_port=7000,
@@ -57,7 +64,8 @@ def test_overrides() -> None:
 
 
 @pytest.mark.parametrize("env", [{}, {"MURMUR_ICE_SECRET": ""}])
-def test_secret_required(env: dict[str, str]) -> None:
+def test_secret_required(monkeypatch: pytest.MonkeyPatch, env: dict[str, str]) -> None:
     """No secret, no agent"""
+    monkeypatch.delenv("MURMUR_ICE_SECRET", raising=False)
     with pytest.raises(ValueError, match="never run without a secret"):
-        AgentConfig.from_env(env)
+        config(monkeypatch, **env)

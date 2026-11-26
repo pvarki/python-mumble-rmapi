@@ -2,21 +2,21 @@
 
 from __future__ import annotations
 
-import os
-from collections.abc import Mapping
-from dataclasses import dataclass
 from pathlib import Path
 
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-@dataclass(frozen=True)
-class AgentConfig:
-    """Where Murmur is, what to trust, and how often to look"""
 
-    ice_secret: str
-    ice_host: str = "127.0.0.1"
-    ice_port: int = 6502
+class AgentConfig(BaseSettings):
+    """Where Murmur is, what to trust, and how often to look; AGENT_* variables, and MURMUR_* for Murmur's own"""
+
+    ice_secret: str = Field(default="", validation_alias="MURMUR_ICE_SECRET")  # required, see _secret
+    ice_host: str = Field(default="127.0.0.1", validation_alias="MURMUR_ICE_HOST")
+    ice_port: int = Field(default=6502, validation_alias="MURMUR_ICE_PORT")
     callback_port: int = 6503
-    server_id: int | None = None  # None: the one virtual server Murmur runs (1.6 numbers it 0, older ones 1)
+    # None: the one virtual server Murmur runs (1.6 numbers it 0, older ones 1)
+    server_id: int | None = Field(default=None, validation_alias="MURMUR_SERVER_ID")
     ca_bundle: Path = Path("/trust/ca-cert.pem")
     channels_file: Path = Path("/config/channels.yaml")
     data_dir: Path = Path("/data/agent")
@@ -28,27 +28,16 @@ class AgentConfig:
     presence_url: str | None = None  # where to report who is connected; None reports nothing
     gateway_ca: Path | None = None  # the voice gateway's own CA; None lets no browser in
 
+    model_config = SettingsConfigDict(env_prefix="AGENT_", frozen=True)
+
+    @field_validator("ice_secret")
     @classmethod
-    def from_env(cls, env: Mapping[str, str] = os.environ) -> AgentConfig:
-        """Read MURMUR_* and AGENT_* variables; the Ice secret is mandatory"""
-        secret = env.get("MURMUR_ICE_SECRET", "")
+    def _secret(cls, secret: str) -> str:
         if not secret:
             raise ValueError("MURMUR_ICE_SECRET must be set: Murmur's Ice interface must never run without a secret")
-        defaults = cls(ice_secret=secret)
-        return cls(
-            ice_secret=secret,
-            ice_host=env.get("MURMUR_ICE_HOST", defaults.ice_host),
-            ice_port=int(env.get("MURMUR_ICE_PORT", defaults.ice_port)),
-            callback_port=int(env.get("AGENT_CALLBACK_PORT", defaults.callback_port)),
-            server_id=int(env["MURMUR_SERVER_ID"]) if env.get("MURMUR_SERVER_ID") else None,
-            ca_bundle=Path(env.get("AGENT_CA_BUNDLE", defaults.ca_bundle)),
-            channels_file=Path(env.get("AGENT_CHANNELS_FILE", defaults.channels_file)),
-            data_dir=Path(env.get("AGENT_DATA_DIR", defaults.data_dir)),
-            ocsp_url=env.get("AGENT_OCSP_URL") or None,
-            ocsp_cache_seconds=float(env.get("AGENT_OCSP_CACHE_SECONDS", defaults.ocsp_cache_seconds)),
-            sweep_seconds=float(env.get("AGENT_SWEEP_SECONDS", defaults.sweep_seconds)),
-            state_url=env.get("AGENT_STATE_URL") or None,
-            poll_seconds=float(env.get("AGENT_POLL_SECONDS", defaults.poll_seconds)),
-            presence_url=env.get("AGENT_PRESENCE_URL") or None,
-            gateway_ca=Path(env["AGENT_GATEWAY_CA"]) if env.get("AGENT_GATEWAY_CA") else None,
-        )
+        return secret
+
+    @field_validator("server_id", "ocsp_url", "state_url", "presence_url", "gateway_ca", mode="before")
+    @classmethod
+    def _empty_is_unset(cls, value: object) -> object:
+        return None if value == "" else value
