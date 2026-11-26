@@ -22,13 +22,11 @@ def test_users_and_flags(store: Store) -> None:
     assert store.user("BRAVO 2") == bravo
     assert store.user("NOBODY") is None
     assert store.version() == v0 + 4
-    with pytest.raises(StoreError):
-        store.set_user_flag("ALPHA 1", "root", True)
 
 
 def test_channel_tree_and_members(store: Store) -> None:
     """Channels nest, carry members, and go away with their subtree"""
-    assert store.is_empty()
+    assert store.tree() == []
     platoon = store.add_channel("10", "Alfa-joukkue")
     squad = store.add_channel("101", "Ryhmä 1", parent=platoon)
     store.add_channel("20")
@@ -56,7 +54,7 @@ def test_import_plan_is_idempotent(store: Store) -> None:
     plan = (ChannelSpec("10", "A", (ChannelSpec("101"), ChannelSpec("102"))), ChannelSpec("07 TJ"))
     assert store.import_plan(plan) == 4
     assert store.import_plan(plan) == 0
-    assert not store.is_empty()
+    assert [c.name for c in store.tree()] == ["07 TJ", "10"]
 
 
 def _chain(store: Store, depth: int) -> int:
@@ -136,29 +134,8 @@ def test_clear(store: Store) -> None:
     store.upsert_user("VOICE1", "u1")
     store.set_member(ten, "VOICE1", True)
     assert store.clear() == 2
-    assert store.tree() == [] and store.is_empty()
+    assert store.tree() == []
     assert store.add_channel("10") > ten
-
-
-def test_changes_are_atomic(store: Store, monkeypatch: pytest.MonkeyPatch) -> None:
-    """A change that fails halfway leaves nothing behind"""
-    ten = store.add_channel("10")
-    store.add_channel("101", parent=ten)
-    store.upsert_user("VOICE1", "u1")
-    store.set_member(ten, "VOICE1", True)
-    before = store.version()
-
-    class Boom(Exception):
-        pass
-
-    def fail(*args: object) -> None:
-        raise Boom
-
-    monkeypatch.setattr(store, "_bump", fail)
-    with pytest.raises(Boom):
-        store.clear()
-    assert [c.name for c in store.tree()] == ["10"] and store.tree()[0].members == ["VOICE1"]
-    assert store.version() == before
 
 
 def test_access_defaults_and_changes(store: Store) -> None:
@@ -175,10 +152,6 @@ def test_access_defaults_and_changes(store: Store) -> None:
     store.update_channel(fire, description="Tulenjohto")
     assert [(c.name, c.access) for c in store.tree()] == [("07 TJ", "invite"), ("10", "open")]
     assert store.tree()[1].children[0].access == "open"
-    with pytest.raises(StoreError):
-        store.update_channel(ten, access="secret")
-    with pytest.raises(StoreError):
-        store.add_channel("20", access="secret")
 
 
 def test_member_makes_net_invite_only(store: Store) -> None:

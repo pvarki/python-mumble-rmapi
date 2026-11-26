@@ -97,7 +97,6 @@ class FakeServer:
             0, SimpleNamespace(id=0, parent=-1, name="Root", temporary=False, description="", links=[])
         )
 
-    # ---- setup helpers
     def channel(self, channel_id: int, parent: int, name: str, temporary: bool = False) -> None:
         """Add a channel as if a user or admin had made it"""
         self.channels[channel_id] = SimpleNamespace(
@@ -123,7 +122,6 @@ class FakeServer:
             channel_id = next(c.id for c in self.channels.values() if c.parent == channel_id and c.name == name)
         return channel_id
 
-    # ---- the Ice operations the agent uses
     def getChannels(self) -> dict[int, SimpleNamespace]:
         return dict(self.channels)
 

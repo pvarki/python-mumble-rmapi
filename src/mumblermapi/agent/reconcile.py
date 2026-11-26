@@ -44,12 +44,10 @@ def reconcile(server: ChannelServer, desired: tuple[ChannelSpec, ...], root: int
     """Create the channels that are missing and correct the descriptions of the others. Returns the paths
     created and the paths Murmur refused.
 
-    Channels are matched by name, so a renamed net is a new channel and the old one is pruned. A temporary
-    channel holding a net's name is replaced. A refused channel is left out with everything under it, and the
-    rest of the tree still goes in.
+    Channels are matched by name, so a renamed net is a new channel and the old one is pruned, which moves anyone
+    in it to its parent. A temporary channel holding a net's name is replaced. A refused channel is left out with
+    everything under it, and the rest of the tree still goes in.
     """
-    # ponytail: rename = recreate, which moves anyone in the net to its parent; keep a store-id map if renames
-    # of busy nets become common
     existing = {(channel.parent, channel.name): channel for channel in server.channels()}
     created: list[str] = []
     refused: list[str] = []

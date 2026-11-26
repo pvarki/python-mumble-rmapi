@@ -14,16 +14,13 @@ from .reconcile import ChannelRefused, ExistingChannel
 
 LOGGER = logging.getLogger(__name__)
 _SLICE_FALLBACK_DIR = "/usr/share/ice/slice"
-# Murmur forwards a login's name and password, before checking either, from a message of up to 8 MiB. It decodes
-# them as UTF-8 and encodes them again for Ice, which makes each invalid byte three, and it drops the authenticator
-# when the call fails. Anything smaller on the agent's adapter lets anyone stop every login; the certificate chain
-# needs room on top.
+# Murmur forwards unchecked logins of up to 8 MiB, each invalid UTF-8 byte re-encoded as three, and drops the
+# authenticator when a call fails: anything smaller lets anyone stop every login. The certificate chain comes on top.
 MURMUR_MESSAGE_BYTES = 0x7FFFFF
 ADAPTER = "Agent"
 ADAPTER_MESSAGE_KIB = 3 * MURMUR_MESSAGE_BYTES // 1024 + 1024
-# Murmur's answers list every user or channel at once and have no such bound: comments stay under 5000 characters
-# with HTML off, so this holds several hundred users' worth, but nothing in Murmur caps the plugin data a client
-# sends.
+# Murmur lists every user or channel in one answer; this holds several hundred users with full comments, though
+# nothing in Murmur caps the plugin data a client sends
 ICE_MESSAGE_KIB = 10 * 1024
 
 

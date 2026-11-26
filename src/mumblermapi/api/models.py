@@ -7,9 +7,10 @@ from typing import Annotated, Literal
 from fastapi import Path
 from pydantic import BaseModel, ConfigDict, Field
 
-Access = Literal["open", "invite", "inherit"]
+from ..channels import MAX_DESCRIPTION, Access
+
 # Postgres text cannot hold NUL
-Description = Annotated[str, Field(max_length=1000, pattern=r"^[^\x00]*$")]
+Description = Annotated[str, Field(max_length=MAX_DESCRIPTION, pattern=r"^[^\x00]*$")]
 Callsign = Annotated[str, Path(pattern=r"^[^\x00]+$")]
 
 

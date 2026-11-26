@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from yaml.constructor import ConstructorError
@@ -33,29 +33,24 @@ ROLES = ("Team Member", "Team Lead", "HQ", "Sniper", "Medic", "Forward Observer"
 # A TAK mission of the same name is ignored rather than allowed to gate it.
 GUARD = "Guard"
 
-# Murmur checks a name only when a client makes or renames a channel, never over Ice, so this is the only gate on
-# a net's name: Murmur's default channelname pattern with its dash taken literally (in Murmur's " -=" it is a
-# range that lets most punctuation through), capped at 100 characters. Use fullmatch: match() lets "$" pass a
-# trailing newline.
+# Murmur's default channelname pattern, its " -=" range made a literal dash, capped at 100. Murmur checks names from
+# clients only, never over Ice, so this is the only gate. Use fullmatch: match() lets "$" pass a trailing newline.
 NAME_RE = re.compile(r"^[ \-=\w#\[\]{}()@|]{1,100}$")
 
-# Murmur holds 1000 channels by default. The cap also stops YAML aliases from expanding a small plan without end.
+# Murmur's default channel limit; it also stops YAML aliases from expanding a small plan without end
 MAX_NETS = 1000
-# Members across a plan, a members list aliased into many nets counted in each: about what a 1 MiB plan holds
-# written out in full, so aliases cannot multiply them past that.
+# About what a 1 MiB plan holds written out in full, each aliased members list counted in every net
 MAX_MEMBERS = 100_000
-# Murmur's channelnestinglimit, which the deployment leaves at its default. Server::canNest refuses a channel
-# under a parent this many levels below the root, over Ice too. The root is level 0 and Units/ level 1, so a net
-# d deep is at level d + 1.
+# Murmur's default channelnestinglimit, which holds over Ice too. The root is level 0 and Units/ level 1.
 MURMUR_NESTING_LIMIT = 10
-# Keeps the last level free for the temporary channels members may make in the deepest net. It also stops a net
-# whose channels alias a list above it before Python's recursion limit does.
+# Leaves the last level for members' temporary channels, and stops aliased nesting before Python's recursion limit
 MAX_DEPTH = MURMUR_NESTING_LIMIT - 2
-MAX_DESCRIPTION = 1000  # as long as the admin API lets a description be
+MAX_DESCRIPTION = 1000
 
 
 # Who may use a Units/ net: everyone, only its members (and those of invite-only nets above it), or the same
 # as the net above it. A top-level net has nothing above it, so "inherit" there means open.
+Access = Literal["open", "invite", "inherit"]
 ACCESS = ("open", "invite", "inherit")
 
 
@@ -71,7 +66,7 @@ class ChannelSpec:
     name: str
     description: str = ""
     children: tuple[ChannelSpec, ...] = ()
-    access: str = ""
+    access: Access | Literal[""] = ""
     members: tuple[str, ...] = ()
 
 

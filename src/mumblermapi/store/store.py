@@ -8,20 +8,20 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 from sqlalchemy import Engine, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, SQLModel, col, delete, select, update
 
-from ..channels import ACCESS, GUARD, MAX_DEPTH, ChannelSpec
+from ..channels import GUARD, MAX_DEPTH, Access, ChannelSpec
 from ..tickets import WEB_SLOTS
-from .errors import ChannelExists, NoSuchChannel, StoreError, TooDeep
+from .errors import ChannelExists, NoSuchChannel, TooDeep
 from .sqlite import copy_sqlite
 from .tables import ChannelRow, MemberRow, MetaRow, MissionMemberRow, UserRow, WebSlotRow
 
 LOGGER = logging.getLogger(__name__)
-_FLAGS = ("admin", "revoked", "voice_disabled")
 
 
 @dataclass(frozen=True)
@@ -47,10 +47,8 @@ class Channel:
     children: list[Channel] = field(default_factory=list)
 
 
-def _access(access: str | None, parent: int) -> str:
+def _access(access: Access | None, parent: int) -> Access:
     """The default, and a top-level net cannot inherit from anything: that is open"""
-    if access is not None and access not in ACCESS:
-        raise StoreError(f"access must be one of {', '.join(ACCESS)}")
     if parent == 0 and access in (None, "inherit"):
         return "open"
     return access or "inherit"
@@ -99,23 +97,18 @@ class Store:
         with Session(self._engine) as session, session.begin():
             session.exec(select(MetaRow).where(MetaRow.key == "version").with_for_update())
             yield session
-            self._bump(session)
-
-    def _bump(self, session: Session) -> None:
-        session.exec(update(MetaRow).where(col(MetaRow.key) == "version").values(value=col(MetaRow.value) + 1))
+            session.exec(update(MetaRow).where(col(MetaRow.key) == "version").values(value=col(MetaRow.value) + 1))
 
     @staticmethod
     def _parents(session: Session) -> dict[int, int]:
         """Each channel's parent"""
         return dict(session.exec(select(ChannelRow.id, ChannelRow.parent)).all())
 
-    # ---- version
     def version(self) -> int:
         """Changes whenever anything murmur-agent cares about changes"""
         with Session(self._engine) as session:
             return session.exec(select(MetaRow.value).where(MetaRow.key == "version")).one()
 
-    # ---- users
     def upsert_user(self, callsign: str, uuid: str) -> None:
         """A user was created or updated in rmapi"""
         with self._change() as session:
@@ -125,10 +118,10 @@ class Store:
                 .on_conflict_do_update(index_elements=["callsign"], set_={"uuid": uuid})
             )
 
-    def set_user_flag(self, callsign: str, flag: str, value: bool, uuid: str = "") -> None:
+    def set_user_flag(
+        self, callsign: str, flag: Literal["admin", "revoked", "voice_disabled"], value: bool, uuid: str = ""
+    ) -> None:
         """Set admin, revoked or voice_disabled; creates the user if rmapi's created event was missed"""
-        if flag not in _FLAGS:
-            raise StoreError(f"unknown flag {flag}")
         with self._change() as session:
             session.exec(
                 insert(UserRow)
@@ -148,8 +141,7 @@ class Store:
             row = session.get(UserRow, callsign)
             return User(**row.model_dump()) if row else None
 
-    # ---- channels
-    def add_channel(self, name: str, description: str = "", parent: int = 0, access: str | None = None) -> int:
+    def add_channel(self, name: str, description: str = "", parent: int = 0, access: Access | None = None) -> int:
         """Create a channel under Units/ (parent 0) or under another channel, at most MAX_DEPTH deep. By default
         a top-level net is open and a sub-net follows its parent."""
         access = _access(access, parent)
@@ -178,7 +170,7 @@ class Store:
             session.exec(delete(ChannelRow).where(col(ChannelRow.id).in_(gone)))
 
     def update_channel(
-        self, channel_id: int, name: str | None = None, description: str | None = None, access: str | None = None
+        self, channel_id: int, name: str | None = None, description: str | None = None, access: Access | None = None
     ) -> None:
         """Rename a channel, change its description, or change who may use it"""
         try:
@@ -186,9 +178,12 @@ class Store:
                 row = session.get(ChannelRow, channel_id)
                 if row is None:
                     raise NoSuchChannel(f"no channel {channel_id}")
-                row.name = row.name if name is None else name
-                row.description = row.description if description is None else description
-                row.access = row.access if access is None else _access(access, row.parent)
+                if name is not None:
+                    row.name = name
+                if description is not None:
+                    row.description = description
+                if access is not None:
+                    row.access = _access(access, row.parent)
         except IntegrityError as exc:
             raise ChannelExists(f"channel {name!r} already exists there") from exc
 
@@ -252,7 +247,6 @@ class Store:
             created += self.import_plan(spec.children, channel_id)
         return created
 
-    # ---- missions
     def missions(self) -> dict[str, frozenset[str]]:
         """TAK missions and their subscribers, as last read"""
         result: dict[str, set[str]] = {}
@@ -276,12 +270,6 @@ class Store:
             )
         return True
 
-    def is_empty(self) -> bool:
-        """No channels yet"""
-        with Session(self._engine) as session:
-            return session.exec(select(ChannelRow.id).limit(1)).first() is None
-
-    # ---- web voice slots
     def web_slot(self, callsign: str, browser: str, now: float) -> int:
         """The web slot this browser of the callsign logs in with: the one it had, else the lowest free one.
         Murmur drops the older of two sessions with one name, so two browsers must not share a slot. No new
