@@ -1,4 +1,4 @@
-"""Shared fixtures: a throwaway PKI shaped like the platform's, and user ids"""
+"""Shared fixtures: a throwaway PKI shaped like the platform's, the API as the cluster runs it, and user ids"""
 
 from __future__ import annotations
 
@@ -12,8 +12,11 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
+from fastapi.testclient import TestClient
 
 from mumblermapi.agent.userids import UserIds
+from mumblermapi.app import create_app
+from mumblermapi.config import Settings
 
 # Today, so certificates the code checks against the real clock are valid when the tests run
 NOW = datetime.now(UTC).replace(microsecond=0)
@@ -111,3 +114,47 @@ def ids_fixture(tmp_path: Path) -> UserIds:
     for name in ("VOICE1---a", "VOICE3---b", "BAD---c", "OTHER---d"):
         ids.get_or_assign(name)
     return ids
+
+
+RMAPI = "rmapi.opendefence-system.serviceaccount.identity.linkerd.cluster.local"
+AGENT = "murmur.app-mumble.serviceaccount.identity.linkerd.cluster.local"
+TRAEFIK = "traefik.traefik-system.serviceaccount.identity.linkerd.cluster.local"
+PLAN = "channels:\n  - name: 10\n    description: Alfa\n    channels:\n      - name: 101\n"
+
+
+def as_(identity: str) -> dict[str, str]:
+    """How a caller arrives in the mesh: services by Linkerd identity, people through Traefik with their cert DN"""
+    if "." in identity:
+        return {"l5d-client-id": identity}
+    return {"l5d-client-id": TRAEFIK, "X-ClientCert-DN": f"CN={identity}"}
+
+
+def user(callsign: str) -> dict[str, str]:
+    """A UserCRUDRequest body"""
+    return {"uuid": f"uuid-{callsign}", "callsign": callsign, "x509cert": ""}
+
+
+@pytest.fixture(name="client")
+def client_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    """An app configured as in the cluster, with the company template applied by an admin"""
+    monkeypatch.setenv("MTLS_TRUST_L5D", "1")
+    monkeypatch.setenv("MTLS_REQUIRE_L5D", "1")
+    monkeypatch.setenv("MTLS_TRUSTED_INGRESS_IDENTITIES", TRAEFIK)
+    templates = tmp_path / "templates"
+    templates.mkdir()
+    (templates / "company.yaml").write_text(f"name: Komppania\ndescription: Vakiosuunnitelma\n{PLAN}")
+    (templates / "broken.yaml").write_text("nets: []\n")
+    (templates / "Company_2022.yaml").write_text(PLAN)  # an id the apply endpoint would refuse
+    ui = tmp_path / "ui"
+    ui.mkdir()
+    (ui / "remoteEntry.js").write_text("export {}")
+    settings = Settings(
+        database=tmp_path / "db.sqlite", templates_dir=templates, ui_dir=ui, rmapi_identity=RMAPI, agent_identity=AGENT
+    )
+    client = TestClient(create_app(settings))
+    for callsign in ("VOICE1", "VOICE3"):
+        assert client.post("/api/v1/users/created", json=user(callsign), headers=as_(RMAPI)).json()["success"]
+    client.post("/api/v1/users/promoted", json=user("VOICE1"), headers=as_(RMAPI))
+    applied = client.post("/api/v1/admin/templates/apply", json={"template": "company"}, headers=as_("VOICE1"))
+    assert applied.json() == {"created": 2}
+    return client

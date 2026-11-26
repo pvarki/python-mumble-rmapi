@@ -16,7 +16,9 @@ import pytest
 from aiohttp.abc import AbstractResolver, ResolveResult
 from fastapi.testclient import TestClient
 
-from mumblermapi.api import PRESENCE_TTL, Settings, create_app
+from mumblermapi.api.murmur_agent import PRESENCE_TTL
+from mumblermapi.app import create_app
+from mumblermapi.config import Settings
 from mumblermapi.health import Answer, fetcher, problems, watch, why
 
 PROXY = "http://proxy/ready"
@@ -183,6 +185,11 @@ def test_healthcheck_reports_the_last_check(tmp_path: Path) -> None:
     response = client.get("/api/v1/healthcheck")
     assert response.status_code == 200
     assert response.json() == {"healthy": False, "extra": problem}
+
+
+def test_healthcheck_needs_no_identity(client: TestClient) -> None:
+    """The kubelet asks without one"""
+    assert client.get("/api/v1/healthcheck").json()["healthy"] is True
 
 
 def test_lifespan_runs_the_health_check(tmp_path: Path) -> None:

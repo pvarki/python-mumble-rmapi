@@ -11,11 +11,11 @@ import pytest
 from cryptography.hazmat.primitives.serialization import Encoding
 from fastapi.testclient import TestClient
 
-from mumblermapi.api import Settings, create_app
+from mumblermapi.app import create_app
+from mumblermapi.config import Settings
 from mumblermapi.tickets import verify
 
-from .conftest import Issued, Pki, issue
-from .test_api import AGENT, RMAPI, TRAEFIK, as_, user
+from .conftest import AGENT, RMAPI, TRAEFIK, Issued, Pki, as_, issue, user
 
 
 def forwarded(*certs: Issued) -> dict[str, str]:
