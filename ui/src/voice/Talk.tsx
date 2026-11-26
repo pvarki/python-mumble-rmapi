@@ -11,9 +11,8 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Button } from "../components/ui/button";
-import { NS } from "../i18n";
-import * as ui from "../ui";
+import { Button } from "@/components/ui/button";
+import { NS } from "@/i18n";
 import { loadBrowser } from "./browser";
 import { VoiceClient } from "./client";
 import { Connected } from "./Connected";
@@ -47,8 +46,11 @@ export function Talk() {
   usePushToTalk(client, binding, choosing, chosen);
 
   return (
-    <section className={ui.TALK} aria-labelledby="mumble-talk">
-      <h2 id="mumble-talk" className={ui.TALK_TITLE}>
+    <section
+      className="space-y-3 rounded-lg border border-border bg-card p-4"
+      aria-labelledby="mumble-talk"
+    >
+      <h2 id="mumble-talk" className="text-base font-semibold">
         {t("talk.title")}
       </h2>
       {s.phase === "connected" ? (
@@ -61,7 +63,7 @@ export function Talk() {
         />
       ) : (
         <>
-          <p className={ui.MUTED_XS}>{t("talk.intro")}</p>
+          <p className="text-xs text-muted-foreground">{t("talk.intro")}</p>
           {s.failure && <FailureLine failure={s.failure} detail={s.detail} />}
           <Button
             type="button"
@@ -69,7 +71,7 @@ export function Talk() {
             onClick={connect}
           >
             {s.phase === "connecting" ? (
-              <Loader2 className={ui.LOADER} />
+              <Loader2 className="animate-spin" />
             ) : (
               <Mic />
             )}

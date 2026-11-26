@@ -2,12 +2,11 @@ import { Loader2 } from "lucide-react";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { api, type ChannelEdit } from "../api";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Textarea } from "../components/ui/textarea";
-import { NS } from "../i18n";
-import * as ui from "../ui";
+import { api, type ChannelEdit } from "@/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { NS } from "@/i18n";
 import type { NetNode } from "./tree";
 import type { TreeCtx } from "./types";
 
@@ -42,7 +41,7 @@ export function EditForm({
   };
   return (
     <form
-      className={ui.EDIT}
+      className="space-y-3"
       onSubmit={(event) => {
         event.preventDefault();
         save();
@@ -54,20 +53,24 @@ export function EditForm({
         }
       }}
     >
-      <label className={ui.FIELD}>
-        <span className={ui.FIELD_LABEL}>{t("admin.netName")}</span>
+      <label className="block space-y-1">
+        <span className="block text-xs text-muted-foreground">
+          {t("admin.netName")}
+        </span>
         <Input
           autoFocus
           type="text"
           maxLength={100}
-          className={ui.INPUT_SM}
+          className="h-10 sm:max-w-sm"
           aria-describedby={describedBy}
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
       </label>
-      <label className={ui.FIELD}>
-        <span className={ui.FIELD_LABEL}>{t("admin.description")}</span>
+      <label className="block space-y-1">
+        <span className="block text-xs text-muted-foreground">
+          {t("admin.description")}
+        </span>
         <Textarea
           maxLength={1000}
           value={description}
@@ -75,11 +78,11 @@ export function EditForm({
         />
       </label>
       {warn && (
-        <p id={warnId} className={ui.MUTED_XS}>
+        <p id={warnId} className="text-xs text-muted-foreground">
           {t("admin.renameMovesOut")}
         </p>
       )}
-      <div className={ui.FORM_BTNS}>
+      <div className="flex items-center justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onDone}>
           {t("admin.cancel")}
         </Button>
@@ -89,7 +92,7 @@ export function EditForm({
           aria-disabled={!ready || undefined}
           aria-describedby={describedBy}
         >
-          {ctx.pending.has(key) && <Loader2 className={ui.LOADER} />}
+          {ctx.pending.has(key) && <Loader2 className="animate-spin" />}
           {t("admin.save")}
         </Button>
       </div>

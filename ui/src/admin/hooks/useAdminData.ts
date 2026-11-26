@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { api, type Template } from "../../api";
+import { api, type Template } from "@/api";
 import type { Data } from "../types";
 
 const REFRESH_MS = 10_000;

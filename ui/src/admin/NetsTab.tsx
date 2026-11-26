@@ -3,9 +3,8 @@ import type { ReactNode, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
 import { StatusDot } from "@/components/StatusDot";
-import { Button } from "../components/ui/button";
-import { NS, RAW } from "../i18n";
-import * as ui from "../ui";
+import { Button } from "@/components/ui/button";
+import { NS, RAW } from "@/i18n";
 import { MissionRow } from "./MissionRow";
 import { NetCard } from "./NetCard";
 import type { Data, TreeCtx } from "./types";
@@ -25,17 +24,20 @@ function GroupHeading({
 }) {
   const { t } = useTranslation(NS);
   return (
-    <div className={ui.HEADING} data-testid={testId}>
+    <div
+      className="flex items-center justify-between gap-2 pb-2 pl-2 pr-3 pt-4 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+      data-testid={testId}
+    >
       <span role="heading" aria-level={2}>
-        {label} <span className={ui.NUM}>{count}</span>
+        {label} <span className="tabular-nums">{count}</span>
       </span>
       {!known ? (
         <span>{t("admin.presenceUnknown")}</span>
       ) : online > 0 ? (
-        <span className={ui.HEAD_ONLINE}>
+        <span className="inline-flex w-10 shrink-0 items-center justify-center gap-1 tabular-nums text-green-600">
           <StatusDot state="on" />
           <span aria-hidden="true">{online}</span>
-          <span className={ui.SR}>
+          <span className="sr-only">
             {t("admin.onlineCount", { count: online })}
           </span>
         </span>
@@ -47,13 +49,13 @@ function GroupHeading({
 function PhoneLegend() {
   const { t } = useTranslation(NS);
   return (
-    <div className={ui.LEGEND}>
-      <span className={ui.LEGEND_ITEM}>
-        <Lock className={ui.ICON_META} />
+    <div className="flex flex-wrap items-center gap-3 px-2 pb-2 text-xs text-muted-foreground md:hidden">
+      <span className="inline-flex items-center gap-1">
+        <Lock className="size-3.5 shrink-0" />
         {t("admin.legendMembers")}
       </span>
-      <span className={ui.LEGEND_ITEM}>
-        <CornerLeftUp className={ui.ICON_META} />
+      <span className="inline-flex items-center gap-1">
+        <CornerLeftUp className="size-3.5 shrink-0" />
         {t("admin.legendFollows")}
       </span>
       <span>{t("admin.legendOpen")}</span>
@@ -90,13 +92,15 @@ export function NetsTab({
   const empty = !data.channels.length && !q;
   const list =
     q && !derived.unitMatches && !derived.missionMatches ? (
-      <p className={ui.NOMATCH}>{t("admin.noMatches", { q, ...RAW })}</p>
+      <p className="py-12 text-center text-sm text-muted-foreground">
+        {t("admin.noMatches", { q, ...RAW })}
+      </p>
     ) : (
       <>
         {empty && !top ? (
-          <div className={ui.EMPTY}>
+          <div className="flex flex-col items-center gap-3 py-12 text-sm text-muted-foreground">
             {t("admin.empty")}
-            <div className={ui.EMPTY_BTNS}>
+            <div className="flex flex-wrap justify-center gap-2">
               {onTemplates && (
                 <Button type="button" onClick={onTemplates}>
                   <ListPlus />
@@ -128,8 +132,12 @@ export function NetsTab({
                 testId="units-heading"
               />
               {derived.unitMatches > 0 && <PhoneLegend />}
-              <ul className={ui.CARDS}>
-                {top && <li className={ui.CARD_FORM}>{top}</li>}
+              <ul className="space-y-2">
+                {top && (
+                  <li className="rounded-lg border border-dashed border-input p-2">
+                    {top}
+                  </li>
+                )}
                 {derived.roots.map((node) => (
                   <NetCard key={node.channel.id} node={node} ctx={ctx} />
                 ))}
@@ -146,16 +154,11 @@ export function NetsTab({
               known={derived.presenceKnown}
               testId="missions-heading"
             />
-            <ul className={ui.CARD}>
+            <ul className="divide-y overflow-hidden rounded-lg border border-border bg-card">
               {derived.missions
                 .filter((m) => m.match)
-                .map((node, index) => (
-                  <MissionRow
-                    key={node.mission.name}
-                    node={node}
-                    ctx={ctx}
-                    first={index === 0}
-                  />
+                .map((node) => (
+                  <MissionRow key={node.mission.name} node={node} ctx={ctx} />
                 ))}
             </ul>
           </section>
@@ -164,8 +167,8 @@ export function NetsTab({
     );
   // The split stays in place while nets open and close, so the list never remounts under the pointer
   return ctx.wide ? (
-    <div className={ui.NETS_SPLIT}>
-      <div className={ui.NETS_LIST}>{list}</div>
+    <div className="flex items-start gap-4">
+      <div className="min-w-0 flex-1">{list}</div>
       {details}
     </div>
   ) : (

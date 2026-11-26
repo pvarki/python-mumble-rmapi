@@ -1,6 +1,6 @@
 import type { TFunction } from "i18next";
 
-import { RAW } from "../i18n";
+import { RAW } from "@/i18n";
 import type { Rule } from "./tree";
 
 // The rule in one sentence, naming the nets that restrict it

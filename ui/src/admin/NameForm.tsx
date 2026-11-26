@@ -2,10 +2,9 @@ import { Loader2, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { NS } from "../i18n";
-import * as ui from "../ui";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { NS } from "@/i18n";
 
 // Adds are keyed per name, so several can be in flight; the form only shows that one is
 export function adding(pending: Set<string>, parent: number): boolean {
@@ -40,12 +39,12 @@ export function NameForm({
     });
   };
   return (
-    <div className={ui.FORM}>
+    <div className="flex items-center gap-2">
       <Input
         ref={input}
         autoFocus
         type="text"
-        className={ui.INPUT_SM}
+        className="h-10 sm:max-w-sm"
         value={name}
         placeholder={placeholder}
         aria-label={placeholder}
@@ -66,14 +65,13 @@ export function NameForm({
         aria-disabled={!ready || undefined}
         onClick={submit}
       >
-        {busy && <Loader2 className={ui.LOADER} />}
+        {busy && <Loader2 className="animate-spin" />}
         {t("admin.add")}
       </Button>
       <Button
         type="button"
-        variant="ghost"
+        variant="muted"
         size="icon"
-        className={ui.MUTED_BTN}
         aria-label={t("admin.cancel")}
         onClick={onCancel}
       >

@@ -95,9 +95,8 @@ export function MemberPicker({
         </Command>
         <Button
           type="button"
-          variant="ghost"
+          variant="muted"
           size="icon-lg"
-          className="text-muted-foreground hover:text-foreground"
           aria-label={t("admin.close")}
           onClick={onClose}
         >

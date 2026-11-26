@@ -1,11 +1,10 @@
 import { useTranslation } from "react-i18next";
 
+import { api, type User } from "@/api";
 import { StatusDot, type Status } from "@/components/StatusDot";
-import { api, type User } from "../api";
-import { Switch } from "../components/ui/switch";
-import { NS, RAW } from "../i18n";
-import { pathLabel } from "../paths";
-import * as ui from "../ui";
+import { Switch } from "@/components/ui/switch";
+import { NS, RAW } from "@/i18n";
+import { pathLabel } from "@/paths";
 import { listUsers } from "./tree";
 import type { Run } from "./types";
 
@@ -66,21 +65,17 @@ export function UsersList({
   const shown = listUsers(users, query);
   if (!shown.length) {
     return (
-      <p className={ui.NOMATCH}>
+      <p className="py-12 text-center text-sm text-muted-foreground">
         {t("admin.noMatches", { q: query.trim(), ...RAW })}
       </p>
     );
   }
   return (
-    <div className={ui.USER_LIST}>
+    <div className="pt-2">
       {/* Names the switch column; screen readers get presence and labels per row */}
-      <div className={ui.USER_HEAD} aria-hidden="true">
-        {!known && (
-          <span className={ui.USER_HEAD_NOTE}>
-            {t("admin.presenceUnknown")}
-          </span>
-        )}
-        <span className={ui.USER_HEAD_VOICE}>{t("title")}</span>
+      <div className="flex text-xs text-muted-foreground" aria-hidden="true">
+        {!known && <span className="pl-2">{t("admin.presenceUnknown")}</span>}
+        <span className="ml-auto w-12 text-center">{t("title")}</span>
       </div>
       <ul>
         {shown.map((user) => {
@@ -89,21 +84,27 @@ export function UsersList({
           return (
             <li
               key={user.callsign}
-              className={ui.USER_ROW}
+              className="flex items-center gap-3 rounded-md pl-2 text-sm hover:bg-muted/50"
               data-testid={`user-${user.callsign}`}
             >
               <StatusDot state={state} />
-              <span className={ui.USER_CALLSIGN} title={user.callsign}>
+              <span
+                className="w-32 shrink-0 truncate font-medium"
+                title={user.callsign}
+              >
                 {user.callsign}
               </span>
-              <span className={ui.SR}>{t(words)}</span>
+              <span className="sr-only">{t(words)}</span>
               {user.voice_disabled ? (
-                <span className={ui.USER_WHERE_OFF}>
+                <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-foreground">
                   <StatusDot state="alert" />
                   {t("admin.voiceOff")}
                 </span>
               ) : (
-                <span className={ui.USER_WHERE} title={where || undefined}>
+                <span
+                  className="min-w-0 flex-1 truncate text-xs text-muted-foreground"
+                  title={where || undefined}
+                >
                   {where}
                 </span>
               )}

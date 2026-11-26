@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 
-import { api } from "../api";
-import { NS, RAW } from "../i18n";
+import { api } from "@/api";
+import { NS, RAW } from "@/i18n";
 import { Confirm } from "./Confirm";
 import { memberKey } from "./MemberChips";
 import { focusAfterRemove, type NetNode } from "./tree";

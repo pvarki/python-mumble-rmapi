@@ -8,11 +8,10 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-import { api } from "../api";
-import { Tabs, TabsContent } from "../components/ui/tabs";
-import { NS } from "../i18n";
-import { read, write } from "../lib/storage";
-import * as ui from "../ui";
+import { api } from "@/api";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { NS } from "@/i18n";
+import { read, write } from "@/lib/storage";
 import { ClearPlan } from "./ClearPlan";
 import { useAdminData } from "./hooks/useAdminData";
 import { useFocusRequests } from "./hooks/useFocusRequests";
@@ -264,7 +263,11 @@ export function Admin() {
       />
     ) : null;
 
-  const loading = <p className={ui.NOMATCH}>{t("admin.loading")}</p>;
+  const loading = (
+    <p className="py-12 text-center text-sm text-muted-foreground">
+      {t("admin.loading")}
+    </p>
+  );
 
   return (
     <div ref={wrap}>
@@ -284,7 +287,7 @@ export function Admin() {
           ref={fileInput}
           type="file"
           accept=".yaml,.yml"
-          className={ui.HIDDEN_INPUT}
+          className="hidden"
           onChange={plan.onFile}
         />
         {top === "clear" && derived && (

@@ -1,5 +1,5 @@
 // The push-to-talk binding, remembered per browser
-import { read, write } from "../lib/storage";
+import { read, write } from "@/lib/storage";
 
 // A key by its physical position (KeyboardEvent.code), so the layout does not matter, or an extra mouse
 // button. Bluetooth PTT buttons that act as keyboards arrive as keys too.

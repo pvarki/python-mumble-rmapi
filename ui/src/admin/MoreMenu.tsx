@@ -2,15 +2,14 @@ import { MoreHorizontal } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Button } from "../components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu";
-import { NS } from "../i18n";
-import * as ui from "../ui";
+} from "@/components/ui/dropdown-menu";
+import { NS } from "@/i18n";
 
 export interface MenuItem {
   label: string;
@@ -36,7 +35,7 @@ export function MoreMenu({
           type="button"
           variant="outline"
           size="icon-lg"
-          className={ui.MUTED_BTN}
+          className="text-muted-foreground hover:text-foreground"
           title={t("admin.more")}
           aria-label={t("admin.more")}
         >
@@ -46,7 +45,7 @@ export function MoreMenu({
       <DropdownMenuContent
         align="end"
         loop
-        className={ui.MENU}
+        className="w-64"
         onCloseAutoFocus={(event) => {
           // An item that opened a panel or a confirmation has moved focus there already
           const at = document.activeElement;
@@ -56,7 +55,7 @@ export function MoreMenu({
         {items.map((item) => (
           <DropdownMenuItem
             key={item.label}
-            className={ui.MENU_ITEM}
+            className="min-h-11 cursor-pointer"
             onSelect={item.action}
           >
             {item.icon}

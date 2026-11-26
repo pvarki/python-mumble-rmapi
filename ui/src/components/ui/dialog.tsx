@@ -1,5 +1,3 @@
-// From rmui's components/ui (shadcn new-york): the parts the remote uses, without dark: variants. The content
-// has no built-in close button, whose label would be English only; callers add a translated DialogClose.
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 

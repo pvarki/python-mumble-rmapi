@@ -2,10 +2,9 @@ import { CircleHelp, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Meta } from "../App";
-import { Button } from "../components/ui/button";
-import { NS } from "../i18n";
-import * as ui from "../ui";
+import type { Meta } from "@/App";
+import { Button } from "@/components/ui/button";
+import { NS } from "@/i18n";
 import { FeatureGuide } from "./FeatureGuide";
 import { guideSteps, opensItself, saveFinished } from "./guide";
 
@@ -36,9 +35,8 @@ export function OnboardingHandler({
       trigger={
         <Button
           type="button"
-          variant="ghost"
+          variant="muted"
           size="icon-lg"
-          className={ui.MUTED_BTN}
           aria-label={t("guide.open")}
           title={t("guide.open")}
         >
@@ -51,9 +49,9 @@ export function OnboardingHandler({
         onDisableGuides && (
           <Button
             type="button"
-            variant="ghost"
+            variant="muted"
             size="sm"
-            className={ui.GUIDE_OFF}
+            className="w-full justify-start text-xs font-normal"
             onClick={() => {
               onDisableGuides();
               setOpen(false);

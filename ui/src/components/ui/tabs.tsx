@@ -1,4 +1,3 @@
-// From rmui's components/ui (shadcn new-york), without dark: variants
 import * as React from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 

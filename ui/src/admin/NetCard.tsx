@@ -2,9 +2,8 @@ import { ChevronRight, CornerLeftUp, Lock } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { NS, RAW } from "../i18n";
-import { cn } from "../lib/utils";
-import * as ui from "../ui";
+import { NS, RAW } from "@/i18n";
+import { cn } from "@/lib/utils";
 import { takeAsked, type FocusTarget } from "./hooks/useFocusRequests";
 import { OnlineCell } from "./OnlineCell";
 import { ruleSentence } from "./ruleSentence";
@@ -17,18 +16,26 @@ function AccessMark({ rule, count }: { rule: Rule; count: number }) {
   if (rule.kind === "members" || rule.kind === "membersPlus") {
     const label = `${sentence}, ${t("admin.memberCount", { count })}`;
     return (
-      <span className={ui.ACC_MEMBERS} title={sentence} aria-label={label}>
-        <Lock className={ui.ICON_META} />
-        <span className={ui.ACC_WORD}>{t("admin.rowMembers")}</span>
+      <span
+        className="inline-flex items-center gap-1 text-foreground"
+        title={sentence}
+        aria-label={label}
+      >
+        <Lock className="size-3.5 shrink-0" />
+        <span className="hidden md:inline">{t("admin.rowMembers")}</span>
         {count}
       </span>
     );
   }
   if (rule.kind === "follows") {
     return (
-      <span className={ui.ACC_FOLLOWS} title={sentence} aria-label={sentence}>
-        <CornerLeftUp className={ui.ICON_META} />
-        <span className={ui.ACC_WORD}>
+      <span
+        className="inline-flex items-center gap-1 text-muted-foreground"
+        title={sentence}
+        aria-label={sentence}
+      >
+        <CornerLeftUp className="size-3.5 shrink-0" />
+        <span className="hidden md:inline">
           {t("admin.rowFollows", { net: rule.net, ...RAW })}
         </span>
       </span>
@@ -61,14 +68,18 @@ function NetRow({ node, ctx }: { node: NetNode; ctx: TreeCtx }) {
   const marked = selected || ctx.markedFold === channel.id;
   const children = expanded ? node.children.filter((c) => c.visible) : [];
   const indent = Array.from({ length: depth }, (_, i) => (
-    <span key={i} className={ui.INDENT} />
+    <span key={i} className="w-4 shrink-0" />
   ));
 
   const mainButton = (lead: ReactNode) => (
     <button
       ref={main}
       type="button"
-      className={cn(ui.ROW_MAIN, !node.match && ui.ROW_CONTEXT)}
+      // An inset focus border: the card's overflow-hidden would clip a ring
+      className={cn(
+        "flex min-w-0 flex-1 items-center gap-2 rounded-md border-2 border-transparent py-2 pr-2 text-left text-sm outline-none focus-visible:border-ring",
+        !node.match && "opacity-50",
+      )}
       data-testid="row"
       aria-current={selected || undefined}
       aria-controls={selected ? ctx.detailsId : undefined}
@@ -77,17 +88,23 @@ function NetRow({ node, ctx }: { node: NetNode; ctx: TreeCtx }) {
       {lead}
       <span
         id={nameId}
-        className={depth ? ui.NAME_SUB : ui.NAME}
+        className={cn(
+          "min-w-0 truncate",
+          depth ? "font-medium" : "font-semibold",
+        )}
         title={channel.name}
       >
         {channel.name}
       </span>
-      <span className={ui.DESC} title={channel.description || undefined}>
+      <span
+        className="min-w-0 flex-1 truncate text-muted-foreground"
+        title={channel.description || undefined}
+      >
         {channel.description}
       </span>
-      <span className={ui.META}>
+      <span className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
         {folded && (
-          <span className={ui.FOLDED}>
+          <span className="hidden text-muted-foreground md:inline">
             {t("admin.subnetsFolded", { count: node.descendants })}
           </span>
         )}
@@ -105,19 +122,24 @@ function NetRow({ node, ctx }: { node: NetNode; ctx: TreeCtx }) {
     <>
       <div
         className={cn(
-          ui.ROW,
-          depth > 0 && ui.ROW_SUB,
-          selected ? ui.ROW_ON : ui.ROW_IDLE,
+          "relative flex h-11 items-stretch",
+          depth > 0 && "md:h-auto",
+          selected ? "bg-muted" : "hover:bg-muted/50",
         )}
       >
-        {marked && <span className={ui.SEL_BAR} aria-hidden="true" />}
+        {marked && (
+          <span
+            className="pointer-events-none absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-foreground"
+            aria-hidden="true"
+          />
+        )}
         {hasFold ? (
           <>
             {indent}
             <button
               ref={fold}
               type="button"
-              className={ui.CHEVRON}
+              className="flex w-10 shrink-0 items-center justify-center rounded-md border-2 border-transparent text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring"
               data-testid="fold"
               aria-expanded={expanded}
               aria-label={t(
@@ -127,7 +149,10 @@ function NetRow({ node, ctx }: { node: NetNode; ctx: TreeCtx }) {
               onClick={() => ctx.setExpanded(channel.id, !expanded)}
             >
               <ChevronRight
-                className={cn(ui.CHEVRON_SVG, expanded && ui.CHEVRON_OPEN)}
+                className={cn(
+                  "size-4 transition-transform",
+                  expanded && "rotate-90",
+                )}
               />
             </button>
             {mainButton(null)}
@@ -135,19 +160,18 @@ function NetRow({ node, ctx }: { node: NetNode; ctx: TreeCtx }) {
         ) : (
           // Without a chevron the whole row, lead column included, is the button
           mainButton(
-            <span className={ui.LEAD_WRAP}>
+            <span className="flex shrink-0">
               {indent}
-              <span className={ui.LEAD} />
+              <span className="flex w-8 shrink-0 items-center justify-center" />
             </span>,
           )
         )}
       </div>
       {children.length > 0 && (
-        <ul>
+        <ul className="divide-y border-t">
           {children.map((child) => (
             <li
               key={child.channel.id}
-              className={ui.SEP}
               data-testid={`net-${child.channel.name}`}
             >
               <NetRow node={child} ctx={ctx} />
@@ -163,7 +187,10 @@ function NetRow({ node, ctx }: { node: NetNode; ctx: TreeCtx }) {
 export function NetCard({ node, ctx }: { node: NetNode; ctx: TreeCtx }) {
   if (!node.visible) return null;
   return (
-    <li className={ui.CARD} data-testid={`net-${node.channel.name}`}>
+    <li
+      className="overflow-hidden rounded-lg border border-border bg-card"
+      data-testid={`net-${node.channel.name}`}
+    >
       <NetRow node={node} ctx={ctx} />
     </li>
   );

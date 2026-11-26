@@ -1,4 +1,4 @@
-import { read, write } from "../lib/storage";
+import { read, write } from "@/lib/storage";
 
 const KEY = "mumble.browser";
 // As mumblermapi's TicketRequest.browser accepts it

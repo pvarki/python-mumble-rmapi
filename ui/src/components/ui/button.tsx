@@ -1,5 +1,3 @@
-// From rmui's components/ui (shadcn new-york), without dark: variants, as rmui never sets .dark. Hover uses
-// muted, not accent, which follows the deployment theme; sizes keep the voice UI's 40-44 px touch targets.
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -16,6 +14,7 @@ const buttonVariants = cva(
           "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20",
         outline: "border bg-background shadow-xs hover:bg-muted",
         ghost: "hover:bg-muted",
+        muted: "text-muted-foreground hover:bg-muted hover:text-foreground",
       },
       size: {
         default: "h-11 px-4 py-2 has-[>svg]:px-3",

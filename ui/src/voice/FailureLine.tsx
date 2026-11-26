@@ -1,9 +1,8 @@
 import { AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { Alert, AlertDescription } from "../components/ui/alert";
-import { NS } from "../i18n";
-import * as ui from "../ui";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { NS } from "@/i18n";
 import type { Failure } from "./client";
 
 export function FailureLine({
@@ -20,7 +19,9 @@ export function FailureLine({
       {/* A block, not a grid, so that a long word wraps */}
       <AlertDescription className="block min-w-0 break-words text-foreground">
         {t(`talk.failure.${failure}`)}
-        {detail && <span className={ui.TALK_DETAIL}>{detail}</span>}
+        {detail && (
+          <span className="block text-xs text-muted-foreground">{detail}</span>
+        )}
       </AlertDescription>
     </Alert>
   );

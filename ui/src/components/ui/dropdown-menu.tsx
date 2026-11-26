@@ -1,6 +1,3 @@
-// From rmui's components/ui (shadcn new-york): the parts the remote uses, without dark: variants. Accent
-// follows the deployment theme and rmui's CSS has no muted focus background, so an item marks hover with
-// muted and keyboard focus with a ring.
 import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 

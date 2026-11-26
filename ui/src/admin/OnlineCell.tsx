@@ -1,8 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import { StatusDot } from "@/components/StatusDot";
-import { NS } from "../i18n";
-import * as ui from "../ui";
+import { NS } from "@/i18n";
 
 // Always rendered, so the green counts line up in one column. A folded row counts its whole group.
 export function OnlineCell({
@@ -18,7 +17,7 @@ export function OnlineCell({
   const show = known && count > 0;
   return (
     <span
-      className={ui.CELL_ONLINE}
+      className="inline-flex w-10 shrink-0 items-center justify-center gap-1 text-green-600"
       aria-label={
         show
           ? t(group ? "admin.groupOnline" : "admin.onlineCount", { count })

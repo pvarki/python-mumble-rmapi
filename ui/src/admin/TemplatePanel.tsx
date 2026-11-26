@@ -2,10 +2,9 @@ import { Loader2, X } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Template } from "../api";
-import { Button } from "../components/ui/button";
-import { NS, RAW } from "../i18n";
-import * as ui from "../ui";
+import type { Template } from "@/api";
+import { Button } from "@/components/ui/button";
+import { NS, RAW } from "@/i18n";
 
 // The channel plan templates on offer, at the top of the net list. Applying one adds the nets it has that are
 // missing, so it is safe on a plan already in use.
@@ -37,7 +36,7 @@ export function TemplatePanel({
     <div
       role="group"
       aria-labelledby={titleId}
-      className={ui.PLAN}
+      className="space-y-2"
       data-testid="templates"
       onKeyDown={(event) => {
         if (event.key === "Escape") {
@@ -46,15 +45,19 @@ export function TemplatePanel({
         }
       }}
     >
-      <div className={ui.PLAN_HEAD}>
-        <h3 ref={title} id={titleId} tabIndex={-1} className={ui.PLAN_TITLE}>
+      <div className="flex items-center gap-2">
+        <h3
+          ref={title}
+          id={titleId}
+          tabIndex={-1}
+          className="min-w-0 flex-1 pl-1 text-sm font-semibold outline-none"
+        >
           {t("admin.templatesTitle")}
         </h3>
         <Button
           type="button"
-          variant="ghost"
+          variant="muted"
           size="icon"
-          className={ui.MUTED_BTN}
           aria-label={t("admin.close")}
           aria-disabled={busy || undefined}
           onClick={close}
@@ -62,16 +65,25 @@ export function TemplatePanel({
           <X />
         </Button>
       </div>
-      {hasNets && <p className={ui.PLAN_NOTE}>{t("admin.templatesKeep")}</p>}
+      {hasNets && (
+        <p className="px-1 text-xs text-muted-foreground">
+          {t("admin.templatesKeep")}
+        </p>
+      )}
       <ul>
         {templates.map((template) => (
-          <li key={template.id} className={ui.PLAN_ITEM}>
-            <div className={ui.PLAN_TEXT}>
-              <span className={ui.PLAN_NAME}>{template.name}</span>
+          <li
+            key={template.id}
+            className="flex flex-wrap items-center gap-2 border-t border-border p-1 pt-2"
+          >
+            <div className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">{template.name}</span>
               {template.description && (
-                <span className={ui.PLAN_DESC}>{template.description}</span>
+                <span className="block text-xs text-muted-foreground">
+                  {template.description}
+                </span>
               )}
-              <span className={ui.PLAN_DESC}>
+              <span className="block text-xs text-muted-foreground">
                 {t("admin.templateNets", { count: template.nets })}
               </span>
             </div>
@@ -86,7 +98,7 @@ export function TemplatePanel({
               onClick={() => onApply(template)}
             >
               {pending.has(`tpl:${template.id}`) && (
-                <Loader2 className={ui.LOADER} />
+                <Loader2 className="animate-spin" />
               )}
               {t("admin.apply")}
             </Button>

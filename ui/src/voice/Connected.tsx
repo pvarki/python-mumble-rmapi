@@ -3,9 +3,9 @@ import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 
 import { StatusDot } from "@/components/StatusDot";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "../components/ui/alert";
-import { Button } from "../components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -14,23 +14,16 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "../components/ui/select";
-import { NS, RAW } from "../i18n";
-import { cn } from "../lib/utils";
-import * as ui from "../ui";
+} from "@/components/ui/select";
+import { NS, RAW } from "@/i18n";
+import { cn } from "@/lib/utils";
 import type { Snapshot, VoiceClient } from "./client";
 import { KeyLine } from "./KeyLine";
 import { callsignOf, isBrowser, netGroups, netPath, netRows } from "./nets";
 import type { Binding } from "./ptt";
 
-// Held down with a thumb or a whole hand: no selection, callout or scrolling may start from it
-const PTT_STYLE: CSSProperties = {
-  height: "6rem",
-  touchAction: "none",
-  userSelect: "none",
-  WebkitUserSelect: "none",
-  WebkitTouchCallout: "none",
-};
+// Inline, as rmui's CSS has no h-24 and no class for the touch callout
+const PTT_STYLE: CSSProperties = { height: "6rem", WebkitTouchCallout: "none" };
 
 export function Connected({
   client,
@@ -66,8 +59,8 @@ export function Connected({
 
   return (
     <>
-      <div className={ui.TALK_STATUS}>
-        <span className={ui.YOU_STATUS}>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+        <span className="inline-flex items-center gap-1.5">
           <StatusDot state="on" />
           {t("talk.connectedAs", {
             name: me ? callsignOf(me.name) : "",
@@ -88,10 +81,15 @@ export function Connected({
         value={me && here ? String(me.channel) : ""}
         onValueChange={(id) => client.join(Number(id))}
       >
-        <SelectTrigger className={ui.NET_PICK} aria-label={t("talk.net")}>
+        <SelectTrigger className="w-full" aria-label={t("talk.net")}>
           <SelectValue placeholder={t("talk.pickNet")}>{hereLabel}</SelectValue>
         </SelectTrigger>
-        <SelectContent style={ui.NET_LIST_STYLE}>
+        <SelectContent
+          style={{
+            maxHeight:
+              "min(50vh, var(--radix-select-content-available-height))",
+          }}
+        >
           {groups.map((group) => (
             <SelectGroup key={group.id}>
               <SelectLabel>
@@ -103,14 +101,16 @@ export function Connected({
                   value={String(row.id)}
                   disabled={!row.joinable}
                   textValue={row.name}
-                  className={ui.NET_OPTION}
+                  className="min-h-11"
                 >
                   {Array.from({ length: row.depth - 1 }, (_, i) => (
-                    <span key={i} className={ui.INDENT} />
+                    <span key={i} className="w-4 shrink-0" />
                   ))}
-                  <span className={ui.NAME_SUB}>{row.name}</span>
+                  <span className="min-w-0 truncate font-medium">
+                    {row.name}
+                  </span>
                   {row.count > 0 && (
-                    <span className={ui.MUTED_XS}>
+                    <span className="text-xs text-muted-foreground">
                       {t("talk.people", { count: row.count })}
                     </span>
                   )}
@@ -120,7 +120,9 @@ export function Connected({
           ))}
         </SelectContent>
       </Select>
-      {me?.suppress && <p className={ui.MUTED_XS}>{t("talk.listenOnly")}</p>}
+      {me?.suppress && (
+        <p className="text-xs text-muted-foreground">{t("talk.listenOnly")}</p>
+      )}
       {s.denied !== null && (
         <Alert variant="destructive">
           <AlertCircle />
@@ -132,7 +134,10 @@ export function Connected({
       )}
 
       {around.length > 0 && (
-        <div className={ui.CHIPS_ROW} aria-label={t("talk.inThisNet")}>
+        <div
+          className="flex flex-wrap items-center gap-2"
+          aria-label={t("talk.inThisNet")}
+        >
           {around.map((p) => (
             <Badge key={p.session}>
               <StatusDot
@@ -145,15 +150,21 @@ export function Connected({
               />
               {callsignOf(p.name)}
               {isBrowser(p.name) && (
-                <span className={ui.MUTED_XS}>{t("talk.web")}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t("talk.web")}
+                </span>
               )}
             </Badge>
           ))}
         </div>
       )}
 
-      <div className={ui.TALK_PTT_BAR}>
-        <p className={ui.TALK_SPEAKING} aria-live="polite">
+      <div className="sticky bottom-0 z-10 space-y-2 bg-card py-2">
+        <p
+          // min-h-4 keeps the line when nobody talks, so the button under a thumb never moves
+          className="flex min-h-4 items-center gap-1.5 text-xs text-green-600"
+          aria-live="polite"
+        >
           {speaking.length > 0 && (
             <>
               <StatusDot state="on" />
@@ -166,8 +177,10 @@ export function Connected({
           aria-pressed={s.transmitting}
           disabled={!here}
           className={cn(
-            ui.TALK_PTT,
-            s.transmitting ? ui.TALK_PTT_ON : ui.TALK_PTT_OFF,
+            "flex w-full touch-none select-none flex-col items-center justify-center gap-1 rounded-xl border-2 border-primary text-base font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:opacity-50",
+            s.transmitting
+              ? "bg-primary text-primary-foreground"
+              : "bg-primary/10 text-primary",
           )}
           style={PTT_STYLE}
           onPointerDown={(e) => {
@@ -186,7 +199,7 @@ export function Connected({
             if (e.key === "Enter") press(false);
           }}
         >
-          <Mic className={ui.TALK_PTT_ICON} />
+          <Mic className="size-8" />
           {s.transmitting ? t("talk.transmitting") : t("talk.hold")}
         </button>
         <KeyLine binding={binding} choosing={choosing} choose={choose} />

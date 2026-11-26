@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { NS, RAW } from "../../i18n";
+import { NS, RAW } from "@/i18n";
 import type { Notice } from "../NoticeLine";
 
 const NOTICE_MS = 6_000;

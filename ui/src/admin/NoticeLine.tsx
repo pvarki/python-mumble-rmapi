@@ -1,10 +1,9 @@
 import { AlertCircle, CheckCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { Alert, AlertDescription } from "../components/ui/alert";
-import { NS } from "../i18n";
-import { cn } from "../lib/utils";
-import * as ui from "../ui";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { NS } from "@/i18n";
+import { cn } from "@/lib/utils";
 
 export interface Notice {
   kind: "error" | "ok";
@@ -29,7 +28,10 @@ export function NoticeLine({
     <Alert
       variant={error ? "destructive" : "default"}
       role={error ? "alert" : "status"}
-      className={cn("flex", !error && ui.NOTICE_OK)}
+      className={cn(
+        "flex",
+        !error && "border-green-500/20 bg-green-500/10 text-green-600",
+      )}
     >
       <Icon />
       <AlertDescription
@@ -39,11 +41,15 @@ export function NoticeLine({
       </AlertDescription>
       <button
         type="button"
-        className={cn(ui.NOTICE_X, tone)}
+        // after:-inset-2 grows the hit area to 40 px
+        className={cn(
+          "relative inline-flex size-6 shrink-0 items-center justify-center rounded-md outline-none after:absolute after:-inset-2 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
+          tone,
+        )}
         aria-label={t("admin.dismiss")}
         onClick={dismiss}
       >
-        <X className={ui.ICON} />
+        <X className="size-4 shrink-0" />
       </button>
     </Alert>
   );

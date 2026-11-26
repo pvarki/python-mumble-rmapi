@@ -2,10 +2,9 @@ import { ArrowLeft, X } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Button } from "../components/ui/button";
-import { NS, RAW } from "../i18n";
-import { cn } from "../lib/utils";
-import * as ui from "../ui";
+import { Button } from "@/components/ui/button";
+import { NS, RAW } from "@/i18n";
+import { cn } from "@/lib/utils";
 import { useFitsScreen } from "./hooks/useWide";
 import type { TreeCtx } from "./types";
 
@@ -58,10 +57,21 @@ export function Frame({
       ref={title}
       id={titleId}
       tabIndex={-1}
-      className={ctx.wide ? ui.DETAIL_TITLE : ui.VIEW_TITLE}
+      className={cn("min-w-0 flex-1 outline-none", ctx.wide && "break-words")}
     >
-      {path && <span className={ui.TITLE_PATH}>{path}</span>}
-      <span className={ctx.wide ? ui.TITLE_NAME : ui.VIEW_NAME}>{name}</span>
+      {path && (
+        <span className="block truncate text-xs text-muted-foreground">
+          {path}
+        </span>
+      )}
+      <span
+        className={cn(
+          "block text-base font-semibold",
+          ctx.wide ? "break-words" : "truncate",
+        )}
+      >
+        {name}
+      </span>
     </h2>
   );
   const close = () => ctx.closeNet();
@@ -73,16 +83,18 @@ export function Frame({
         id={ctx.detailsId}
         aria-labelledby={titleId}
         data-testid={testId}
-        className={cn(ui.SIDE, sticky && ui.SIDE_STICKY)}
+        className={cn(
+          "w-80 shrink-0 self-start space-y-3 rounded-lg border border-border bg-card p-4 text-sm",
+          sticky && "sticky top-4",
+        )}
       >
-        <div className={ui.DETAIL_HEAD}>
+        <div className="flex items-start gap-2">
           {heading}
           {action}
           <Button
             type="button"
-            variant="ghost"
+            variant="muted"
             size="icon"
-            className={ui.MUTED_BTN}
             data-testid="close-net"
             aria-label={t("admin.closeNet", { name, ...RAW })}
             title={t("admin.closeNet", { name, ...RAW })}
@@ -101,9 +113,9 @@ export function Frame({
       id={ctx.detailsId}
       aria-labelledby={titleId}
       data-testid={testId}
-      className={ui.VIEW}
+      className="min-h-svh"
     >
-      <div className={ui.VIEW_BAR}>
+      <div className="sticky top-0 z-10 flex h-14 items-center gap-1 border-b border-border bg-background">
         <Button
           type="button"
           variant="ghost"
@@ -118,7 +130,7 @@ export function Frame({
         {heading}
         {action}
       </div>
-      <div className={ui.VIEW_INNER}>{children}</div>
+      <div className="space-y-3 py-4 text-sm">{children}</div>
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import type { Access, Channel, Mission, User } from "../api";
+import type { Access, Channel, Mission, User } from "@/api";
 import type { FocusTarget } from "./hooks/useFocusRequests";
 import type { Derived } from "./tree";
 

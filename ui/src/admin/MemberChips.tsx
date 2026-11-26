@@ -4,10 +4,10 @@ import { useTranslation } from "react-i18next";
 
 import { StatusDot } from "@/components/StatusDot";
 import { Badge } from "@/components/ui/badge";
-import { NS, RAW } from "../i18n";
-import { cn } from "../lib/utils";
-import { pathLabel } from "../paths";
-import * as ui from "../ui";
+import { Button } from "@/components/ui/button";
+import { NS, RAW } from "@/i18n";
+import { cn } from "@/lib/utils";
+import { pathLabel } from "@/paths";
 import type { TreeCtx } from "./types";
 
 export function memberKey(id: number, callsign: string): string {
@@ -36,7 +36,7 @@ export function MemberChips({
     ctx.users.filter((u) => u.revoked).map((u) => u.callsign),
   );
   return (
-    <div ref={chips} className={ui.CHIPS_ROW}>
+    <div ref={chips} className="flex flex-wrap items-center gap-2">
       {members.map((callsign) => {
         const where = ctx.derived.whereOnline.get(callsign);
         const gone = revoked.has(callsign);
@@ -49,13 +49,14 @@ export function MemberChips({
             {where && (
               <>
                 <StatusDot state="on" />
-                <span className={ui.SR}>{t("admin.isOnline")}</span>
+                <span className="sr-only">{t("admin.isOnline")}</span>
               </>
             )}
-            <span className={ui.CHIP_TEXT}>{callsign}</span>
+            <span className="truncate">{callsign}</span>
             <button
               type="button"
-              className={ui.CHIP_X_BTN}
+              // after:-inset-2 grows the hit area past 40 px; the row's gap-2 keeps it off the next chip
+              className="relative inline-flex size-8 items-center justify-center rounded-full text-muted-foreground outline-none after:absolute after:-inset-2 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:opacity-50"
               data-callsign={callsign}
               aria-label={t("admin.removeMember", { callsign, ...RAW })}
               aria-disabled={
@@ -63,21 +64,23 @@ export function MemberChips({
               }
               onClick={() => onRemove(callsign)}
             >
-              <X className={ui.ICON_META} />
+              <X className="size-3.5 shrink-0" />
             </button>
           </Badge>
         );
       })}
       {!picking && (
-        <button
+        <Button
           ref={addMember}
           type="button"
-          className={ui.CHIP_ADD}
+          variant="muted"
+          size="xs"
+          className="relative h-8 gap-1 rounded-full border border-dashed border-input px-3 font-normal after:absolute after:-inset-2 hover:bg-muted/50"
           onClick={() => ctx.setMode("picker")}
         >
-          <Plus className={ui.ICON_META} />
+          <Plus className="size-3.5" />
           {t("admin.addMember")}
-        </button>
+        </Button>
       )}
     </div>
   );

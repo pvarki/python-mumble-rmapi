@@ -1,4 +1,4 @@
-import { read, write } from "../lib/storage";
+import { read, write } from "@/lib/storage";
 
 export interface GuideStep {
   id: string;

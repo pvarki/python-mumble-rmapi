@@ -2,11 +2,10 @@ import { CornerLeftUp, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { api, type Access } from "../api";
-import { Button } from "../components/ui/button";
-import { NS, RAW } from "../i18n";
-import { cn } from "../lib/utils";
-import * as ui from "../ui";
+import { api, type Access } from "@/api";
+import { Button } from "@/components/ui/button";
+import { NS, RAW } from "@/i18n";
+import { cn } from "@/lib/utils";
 import { AccessChoice } from "./AccessChoice";
 import { EditForm } from "./EditForm";
 import { Frame } from "./Frame";
@@ -24,8 +23,8 @@ function AccessLine({ rule }: { rule: Rule }) {
   const Icon =
     rule.kind === "follows" ? CornerLeftUp : rule.kind === "open" ? null : Lock;
   return (
-    <p className={ui.ACCESS_LINE}>
-      {Icon && <Icon className={ui.ACCESS_ICON} />}
+    <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+      {Icon && <Icon className="mt-0.5 size-3.5 shrink-0" />}
       {ruleSentence(t, rule)}
     </p>
   );
@@ -156,9 +155,8 @@ export function NetDetails({
           <Button
             ref={editNet}
             type="button"
-            variant="ghost"
+            variant="muted"
             size={ctx.wide ? "icon" : "icon-lg"}
-            className={ui.MUTED_BTN}
             data-testid="edit-net"
             aria-label={t("admin.editNet")}
             title={t("admin.editNet")}
@@ -175,12 +173,16 @@ export function NetDetails({
         <EditForm node={node} ctx={ctx} onDone={() => backTo("edit")} />
       ) : (
         <>
-          {hasDesc && <p className={ui.PANEL_DESC}>{channel.description}</p>}
+          {hasDesc && (
+            <p className="break-words text-muted-foreground">
+              {channel.description}
+            </p>
+          )}
           {/* On the phone screen the bar's own border already separates a net without a description */}
           <div
             className={cn(
-              ui.DETAIL_BODY,
-              (ctx.wide || hasDesc) && ui.DETAIL_SPLIT,
+              "space-y-3",
+              (ctx.wide || hasDesc) && "border-t border-border pt-3",
             )}
           >
             <AccessChoice
@@ -197,7 +199,7 @@ export function NetDetails({
             {channel.access !== "invite" ? (
               mode !== "picker" &&
               members.length > 0 && (
-                <p className={ui.MUTED_XS}>
+                <p className="text-xs text-muted-foreground">
                   {t("admin.membersKept", { count: members.length })}
                 </p>
               )
@@ -230,7 +232,7 @@ export function NetDetails({
               <div
                 role="group"
                 aria-labelledby={subnetsId}
-                className={ui.SUBNETS}
+                className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground"
               >
                 <span id={subnetsId}>{t("admin.subnets")}</span>
                 {node.children.map((child) => (
@@ -239,7 +241,7 @@ export function NetDetails({
                     type="button"
                     variant="ghost"
                     size="xs"
-                    className={ui.SUBNET_LINK}
+                    className="text-foreground"
                     data-testid="subnet-link"
                     onClick={() => ctx.openNet(`u:${child.channel.id}`)}
                   >
@@ -250,37 +252,35 @@ export function NetDetails({
             )}
           </div>
           {(mode === "view" || confirming) && (
-            <div className={ui.DETAIL_FOOT}>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
               <Button
                 ref={addSubnet}
                 type="button"
-                variant="ghost"
+                variant="muted"
                 size="xs"
-                className={ui.MUTED_BTN}
                 onClick={() => {
                   setAdded([]);
                   ctx.setMode("subnet");
                 }}
               >
-                <Plus className={ui.ICON_META} />
+                <Plus className="size-3.5 shrink-0" />
                 {t("admin.addSubnet")}
               </Button>
               {/* Same weight as its neighbour; the red icon alone marks the action as destructive */}
               <Button
                 ref={removeNet}
                 type="button"
-                variant="ghost"
+                variant="muted"
                 size="xs"
-                className={ui.MUTED_BTN}
                 onClick={() => ctx.setMode("remove")}
               >
-                <Trash2 className={cn(ui.ICON_META, ui.DANGER_ICON)} />
+                <Trash2 className="size-3.5 shrink-0 text-destructive" />
                 {t("admin.removeNet")}
               </Button>
             </div>
           )}
           {mode === "subnet" && (
-            <div className={ui.DETAIL_FOOT_BLOCK}>
+            <div className="space-y-2 border-t border-border pt-3">
               <NameForm
                 placeholder={t("admin.subnetName")}
                 busy={adding(ctx.pending, id)}
@@ -297,7 +297,7 @@ export function NetDetails({
                 }
               />
               {added.length > 0 && (
-                <p role="status" className={ui.MUTED_XS}>
+                <p role="status" className="text-xs text-muted-foreground">
                   {t("admin.added", { names: added.join(", "), ...RAW })}
                 </p>
               )}

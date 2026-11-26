@@ -3,12 +3,10 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { StatusDot } from "@/components/StatusDot";
+import { addTranslations, NS } from "@/i18n";
+import { MISSIONS, pathLabel } from "@/paths";
 import { Admin } from "./admin/Admin";
 import { OnboardingHandler } from "./guide/OnboardingHandler";
-import { addTranslations, NS } from "./i18n";
-import { cn } from "./lib/utils";
-import { MISSIONS, pathLabel } from "./paths";
-import * as ui from "./ui";
 import { Talk } from "./voice/Talk";
 
 // What mumblermapi's /api/v2/clients/data returns for the signed-in user, by way of rmapi
@@ -36,32 +34,39 @@ function YouLine({ data }: { data: ClientData }) {
   const { t } = useTranslation(NS);
   const nets = data.nets ?? [];
   return (
-    <div className={ui.YOU} data-testid="you">
-      <div className={ui.YOU_LINE}>
+    <div className="space-y-1" data-testid="you">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
         {data.voice === true && (
-          <span className={ui.YOU_STATUS}>
+          <span className="inline-flex items-center gap-1.5">
             <StatusDot state="on" />
             {t("voiceOn")}
           </span>
         )}
         {data.voice === false && (
-          <span className={cn(ui.YOU_STATUS, ui.YOU_OFF)}>
+          <span className="inline-flex items-center gap-1.5 text-foreground">
             <StatusDot state="alert" />
             {t("voiceOff")}
           </span>
         )}
         {data.voice === false ? null : nets.length ? (
           nets.map((net) => (
-            <span key={net} className={ui.NET_TAG}>
-              {net.startsWith(MISSIONS) && <Flag className={ui.FLAG} />}
+            <span
+              key={net}
+              className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs"
+            >
+              {net.startsWith(MISSIONS) && (
+                <Flag className="size-3.5 shrink-0 text-muted-foreground" />
+              )}
               {pathLabel(net)}
             </span>
           ))
         ) : (
-          <span className={ui.MUTED_XS}>{t("openNetsOnly")}</span>
+          <span className="text-xs text-muted-foreground">
+            {t("openNetsOnly")}
+          </span>
         )}
       </div>
-      <p className={ui.MUTED_XS}>{t("atakHint")}</p>
+      <p className="text-xs text-muted-foreground">{t("atakHint")}</p>
     </div>
   );
 }
@@ -69,9 +74,9 @@ function YouLine({ data }: { data: ClientData }) {
 function VoicePage({ data, meta }: { data: ClientData; meta: Meta }) {
   const { t } = useTranslation(NS);
   return (
-    <div className={ui.PAGE}>
-      <div className={ui.PAGE_HEAD}>
-        <h1 className={ui.H1}>{t("title")}</h1>
+    <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
         {/* rmui passes {} until rmapi answers, and the guide decides on mount whether it opens */}
         {data.voice !== undefined && (
           <OnboardingHandler

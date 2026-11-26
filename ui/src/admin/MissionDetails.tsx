@@ -4,10 +4,9 @@ import { useTranslation } from "react-i18next";
 
 import { StatusDot } from "@/components/StatusDot";
 import { Badge } from "@/components/ui/badge";
-import { NS } from "../i18n";
-import { cn } from "../lib/utils";
-import { pathLabel } from "../paths";
-import * as ui from "../ui";
+import { NS } from "@/i18n";
+import { cn } from "@/lib/utils";
+import { pathLabel } from "@/paths";
 import { Frame } from "./Frame";
 import { InNet } from "./InNet";
 import type { MissionNode } from "./tree";
@@ -34,12 +33,14 @@ export function MissionDetails({
       testId="mission-panel"
     >
       {notice}
-      <div className={cn(ui.DETAIL_BODY, ctx.wide && ui.DETAIL_SPLIT)}>
-        <p className={ui.ACCESS_LINE}>
-          {!node.mission.open && <Flag className={ui.ACCESS_ICON} />}
+      <div
+        className={cn("space-y-3", ctx.wide && "border-t border-border pt-3")}
+      >
+        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+          {!node.mission.open && <Flag className="mt-0.5 size-3.5 shrink-0" />}
           {t(node.mission.open ? "admin.missionOpen" : "admin.accessMission")}
         </p>
-        <div className={ui.CHIPS_ROW}>
+        <div className="flex flex-wrap items-center gap-2">
           {node.subscribers.map((s) => (
             <Badge
               key={s.callsign}
@@ -56,7 +57,7 @@ export function MissionDetails({
               {s.online && (
                 <>
                   <StatusDot state="on" />
-                  <span className={ui.SR}>{t("admin.isOnline")}</span>
+                  <span className="sr-only">{t("admin.isOnline")}</span>
                 </>
               )}
               {s.callsign}

@@ -1,8 +1,7 @@
 import { useTranslation } from "react-i18next";
 
-import { Button } from "../components/ui/button";
-import { NS } from "../i18n";
-import * as ui from "../ui";
+import { Button } from "@/components/ui/button";
+import { NS } from "@/i18n";
 import { bindingLabel } from "./ptt";
 import type { Binding } from "./ptt";
 
@@ -21,20 +20,16 @@ export function KeyLine({
       ? t(`talk.keys.${binding.code}`, { defaultValue: bindingLabel(binding) })
       : bindingLabel(binding);
   return (
-    <div className={ui.TALK_KEY}>
+    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
       <span>{t("talk.key")}</span>
       {choosing ? (
         <span aria-live="polite">{t("talk.pressKey")}</span>
       ) : (
         <>
-          <span className={ui.NET_TAG}>{label}</span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={ui.MUTED_BTN}
-            onClick={choose}
-          >
+          <span className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs">
+            {label}
+          </span>
+          <Button type="button" variant="muted" size="xs" onClick={choose}>
             {t("talk.changeKey")}
           </Button>
         </>

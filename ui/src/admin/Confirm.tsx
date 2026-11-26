@@ -10,9 +10,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "../components/ui/alert-dialog";
-import { buttonVariants } from "../components/ui/button";
-import { NS } from "../i18n";
+} from "@/components/ui/alert-dialog";
+import { buttonVariants } from "@/components/ui/button";
+import { NS } from "@/i18n";
 
 // Open while rendered: the caller closes it and moves focus. It cannot be cancelled once the request is sent.
 export function Confirm({

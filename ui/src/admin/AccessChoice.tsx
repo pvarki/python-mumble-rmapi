@@ -2,10 +2,9 @@ import * as ToggleGroup from "@radix-ui/react-toggle-group";
 import { useId, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Access } from "../api";
-import { NS } from "../i18n";
-import { cn } from "../lib/utils";
-import * as ui from "../ui";
+import type { Access } from "@/api";
+import { NS } from "@/i18n";
+import { cn } from "@/lib/utils";
 import type { NetNode } from "./tree";
 import type { TreeCtx } from "./types";
 
@@ -34,8 +33,8 @@ export function AccessChoice({
   const choices = node.depth ? CHOICES : CHOICES.slice(0, 2);
   const current = choices.some(([value]) => value === access) ? access : "open";
   return (
-    <div className={ui.FIELD}>
-      <span id={labelId} className={ui.FIELD_LABEL}>
+    <div className="block space-y-1">
+      <span id={labelId} className="block text-xs text-muted-foreground">
         {t("admin.accessLabel")}
       </span>
       <ToggleGroup.Root
@@ -44,7 +43,7 @@ export function AccessChoice({
         value={current}
         onValueChange={(v) => v && v !== current && onChoose(v as Access)}
         aria-labelledby={labelId}
-        className={ui.SEG}
+        className="inline-flex h-12 w-full items-center rounded-lg bg-muted p-px"
       >
         {choices.map(([value, label]) => (
           <ToggleGroup.Item
@@ -52,9 +51,12 @@ export function AccessChoice({
             value={value}
             data-access={value}
             aria-disabled={ctx.pending.has(`acc:${id}`) || undefined}
+            // Chosen in JS: rmui's CSS has data-[state=on] only with accent, which follows the theme
             className={cn(
-              ui.SEG_OPT,
-              value === current ? ui.TAB_ON : ui.TAB_OFF,
+              "inline-flex h-[calc(100%-1px)] min-w-0 grow items-center justify-center whitespace-nowrap rounded-md px-1.5 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:opacity-50",
+              value === current
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             {t(label)}

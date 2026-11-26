@@ -1,6 +1,6 @@
 // The admin view's net tree: each unit net's effective access rule, who is where, and search
-import type { Access, Channel, Mission, User } from "../api";
-import { MISSIONS, UNITS } from "../paths";
+import type { Access, Channel, Mission, User } from "@/api";
+import { MISSIONS, UNITS } from "@/paths";
 
 // Who may use a net, from its access and the nets above it. A members-only net admits its members and those
 // of every members-only net above it, even across open nets in between; an inherit net follows the nearest net

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 
-import { read, write } from "../../lib/storage";
+import { read, write } from "@/lib/storage";
 import type { Derived } from "../tree";
 
 const FOLDS_KEY = "mumble.folds";
