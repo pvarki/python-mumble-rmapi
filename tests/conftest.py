@@ -1,9 +1,10 @@
-"""A throwaway PKI shaped like the platform's: external root -> external CA -> client certificates"""
+"""Shared fixtures: a throwaway PKI shaped like the platform's, and user ids"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from cryptography import x509
@@ -11,6 +12,8 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
+
+from mumblermapi.agent.userids import UserIds
 
 # Today, so certificates the code checks against the real clock are valid when the tests run
 NOW = datetime.now(UTC).replace(microsecond=0)
@@ -99,3 +102,12 @@ def pki_fixture() -> Pki:
     root = issue("Test External Root", ca=True)
     ca = issue("Test External CA", root, ca=True)
     return Pki(root=root, ca=ca, alpha=issue("ALPHA 1", ca))
+
+
+@pytest.fixture(name="ids")
+def ids_fixture(tmp_path: Path) -> UserIds:
+    """User ids for the users of agent_helpers.murmur(), as the authenticator would have handed them out"""
+    ids = UserIds(tmp_path / "ids.json")
+    for name in ("VOICE1---a", "VOICE3---b", "BAD---c", "OTHER---d"):
+        ids.get_or_assign(name)
+    return ids

@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from mumblermapi.channels import ExistingChannel
-from mumblermapi.enforce import (
+from mumblermapi.agent.enforce import (
     OPEN,
     OPEN_OVERRIDE,
     Access,
@@ -21,7 +20,8 @@ from mumblermapi.enforce import (
     shadows,
     violations,
 )
-from mumblermapi.policy import Policy, Unit
+from mumblermapi.agent.policy import Policy, Unit
+from mumblermapi.agent.reconcile import ExistingChannel
 
 from .murmur_acl import created_by, may_enter
 

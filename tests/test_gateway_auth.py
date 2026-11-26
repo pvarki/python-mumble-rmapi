@@ -9,11 +9,11 @@ from pathlib import Path
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from mumblermapi.authenticator import REJECT, TRY_LATER, Authenticator
+from mumblermapi.agent.authenticator import REJECT, TRY_LATER, Authenticator
+from mumblermapi.agent.policy import Policy, PolicySource, parse_state
+from mumblermapi.agent.userids import UserIds
 from mumblermapi.identity import CertVerifier
-from mumblermapi.policy import Policy, PolicySource, parse_state
 from mumblermapi.tickets import mint, public_key
-from mumblermapi.userids import UserIds
 
 from .conftest import NOW, Issued, Pki, issue
 from .test_authenticator import FakeRevocation

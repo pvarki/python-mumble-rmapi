@@ -18,7 +18,7 @@ from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import ocsp
 from cryptography.x509.oid import AuthorityInformationAccessOID, ExtendedKeyUsageOID
 
-from .identity import Identity
+from ..identity import Identity
 
 LOGGER = logging.getLogger(__name__)
 MAX_RESPONSE_BYTES = 64 * 1024

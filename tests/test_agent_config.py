@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from mumblermapi.config import AgentConfig
+from mumblermapi.agent.config import AgentConfig
 
 FAKE_SECRET = "not-a-real-ice-secret"  # nosec B105  # pragma: allowlist secret
 

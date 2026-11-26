@@ -9,7 +9,7 @@ import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from .channels import ACCESS, GUARD, ChannelSpec
+from ..channels import ACCESS, GUARD, ChannelSpec
 
 LOGGER = logging.getLogger(__name__)
 MAX_STATE_BYTES = 4 * 1024 * 1024

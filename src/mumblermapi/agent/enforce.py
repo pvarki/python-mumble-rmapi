@@ -6,9 +6,9 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from .channels import ExistingChannel
-from .identity import IdentityError, normalize_callsign, parse_username
+from ..identity import IdentityError, normalize_callsign, parse_username
 from .policy import Policy, Unit
+from .reconcile import ExistingChannel
 
 # Murmur ACL bits a restricted net keeps for its members. Traverse stays, so everyone still sees the tree.
 ENTER, SPEAK, WHISPER, TEXT_MESSAGE, MAKE_TEMP_CHANNEL, LISTEN = 0x04, 0x08, 0x100, 0x200, 0x400, 0x800

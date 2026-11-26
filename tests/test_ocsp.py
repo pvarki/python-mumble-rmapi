@@ -16,9 +16,9 @@ from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import ocsp
 from cryptography.x509.oid import AuthorityInformationAccessOID, ExtendedKeyUsageOID
 
-from mumblermapi import ocsp as ocsp_module
+from mumblermapi.agent import ocsp as ocsp_module
+from mumblermapi.agent.ocsp import OcspChecker, OcspUnavailable, http_post, responder_url
 from mumblermapi.identity import Identity
-from mumblermapi.ocsp import OcspChecker, OcspUnavailable, http_post, responder_url
 
 from .conftest import NOW, Issued, Pki, issue
 

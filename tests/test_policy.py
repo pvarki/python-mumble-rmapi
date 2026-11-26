@@ -10,8 +10,8 @@ import urllib.request
 
 import pytest
 
+from mumblermapi.agent.policy import MAX_STATE_BYTES, Policy, PolicySource, Unit, from_plan, http_get, parse_state
 from mumblermapi.channels import GUARD, ChannelSpec
-from mumblermapi.policy import MAX_STATE_BYTES, Policy, PolicySource, Unit, from_plan, http_get, parse_state
 
 STATE = {
     "version": 7,

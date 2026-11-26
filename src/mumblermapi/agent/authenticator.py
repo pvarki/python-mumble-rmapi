@@ -8,10 +8,10 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Protocol
 
-from .identity import CertVerifier, Identity, IdentityError, Username, bind, parse_username
+from ..identity import CertVerifier, Identity, IdentityError, Username, bind, parse_username
+from ..tickets import AUDIT, is_web_slot, verify
 from .ocsp import OcspUnavailable
 from .policy import Policy
-from .tickets import AUDIT, is_web_slot, verify
 from .userids import UserIds
 
 LOGGER = logging.getLogger(__name__)

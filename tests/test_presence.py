@@ -9,9 +9,9 @@ import urllib.request
 
 import pytest
 
-from mumblermapi.channels import ExistingChannel
-from mumblermapi.enforce import Session
-from mumblermapi.presence import PresenceReporter, channel_paths, http_post_json, presence
+from mumblermapi.agent.enforce import Session
+from mumblermapi.agent.presence import PresenceReporter, channel_paths, http_post_json, presence
+from mumblermapi.agent.reconcile import ExistingChannel
 
 CHANNELS = [
     ExistingChannel(0, -1, "Root"),

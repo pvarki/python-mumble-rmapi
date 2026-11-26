@@ -10,8 +10,8 @@ import urllib.request
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 
-from .channels import ExistingChannel
 from .enforce import Session, callsign_of
+from .reconcile import ExistingChannel
 
 LOGGER = logging.getLogger(__name__)
 
