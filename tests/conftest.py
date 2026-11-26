@@ -1,4 +1,5 @@
-"""Shared fixtures: a throwaway PKI shaped like the platform's, the API as the cluster runs it, and user ids"""
+"""Shared fixtures: a throwaway PKI shaped like the platform's, a Postgres, the API as the cluster runs it, and
+user ids"""
 
 from __future__ import annotations
 
@@ -13,10 +14,13 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 from fastapi.testclient import TestClient
+from pytest_docker.plugin import Services
+from sqlmodel import SQLModel
 
 from mumblermapi.agent.userids import UserIds
 from mumblermapi.app import create_app
 from mumblermapi.config import Settings
+from mumblermapi.store import DatabaseSettings, Store, engine
 
 # Today, so certificates the code checks against the real clock are valid when the tests run
 NOW = datetime.now(UTC).replace(microsecond=0)
@@ -107,6 +111,26 @@ def pki_fixture() -> Pki:
     return Pki(root=root, ca=ca, alpha=issue("ALPHA 1", ca))
 
 
+@pytest.fixture(scope="session", name="postgres")
+def postgres_fixture(docker_ip: str, docker_services: Services) -> DatabaseSettings:
+    """The Postgres from docker-compose.yml, up and ready"""
+    port = docker_services.port_for("postgres", 5432)
+    return DatabaseSettings(host=docker_ip, port=port, password="mumbletestpwd")  # pragma: allowlist secret
+
+
+@pytest.fixture(name="database")
+def database_fixture(postgres: DatabaseSettings) -> DatabaseSettings:
+    """The test Postgres with no tables, so each test starts from an empty store"""
+    SQLModel.metadata.drop_all(engine(postgres.url))
+    return postgres
+
+
+@pytest.fixture(name="store")
+def store_fixture(database: DatabaseSettings) -> Store:
+    """A fresh store"""
+    return Store(engine(database.url))
+
+
 @pytest.fixture(name="ids")
 def ids_fixture(tmp_path: Path) -> UserIds:
     """User ids for the users of agent_helpers.murmur(), as the authenticator would have handed them out"""
@@ -135,7 +159,7 @@ def user(callsign: str) -> dict[str, str]:
 
 
 @pytest.fixture(name="client")
-def client_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+def client_fixture(database: DatabaseSettings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """An app configured as in the cluster, with the company template applied by an admin"""
     monkeypatch.setenv("MTLS_TRUST_L5D", "1")
     monkeypatch.setenv("MTLS_REQUIRE_L5D", "1")
@@ -149,7 +173,7 @@ def client_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClien
     ui.mkdir()
     (ui / "remoteEntry.js").write_text("export {}")
     settings = Settings(
-        database=tmp_path / "db.sqlite", templates_dir=templates, ui_dir=ui, rmapi_identity=RMAPI, agent_identity=AGENT
+        database=database, templates_dir=templates, ui_dir=ui, rmapi_identity=RMAPI, agent_identity=AGENT
     )
     client = TestClient(create_app(settings))
     for callsign in ("VOICE1", "VOICE3"):

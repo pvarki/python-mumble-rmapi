@@ -194,9 +194,11 @@ async def watch(store: Store, settings: TakSettings, stop: asyncio.Event) -> Non
                 if needs_enrolment(settings.cert, datetime.now(UTC)):
                     await enrol(session, settings)
                     LOGGER.info("Registered with TAK as %s", settings.cn)
-                missions = await read_missions(session, settings, tls_context(settings), store.missions())
-                if store.set_missions(missions):
-                    LOGGER.info("Mission nets: %s", ", ".join(sorted(store.missions())) or "none")
+                known = await asyncio.to_thread(store.missions)
+                missions = await read_missions(session, settings, tls_context(settings), known)
+                if await asyncio.to_thread(store.set_missions, missions):
+                    nets = await asyncio.to_thread(store.missions)
+                    LOGGER.info("Mission nets: %s", ", ".join(sorted(nets)) or "none")
             except (aiohttp.ClientError, OSError, ValueError, TypeError, KeyError, RuntimeError, TimeoutError) as exc:
                 LOGGER.warning("Keeping the last known missions: %r", exc)  # a timeout's str() is empty
             except Exception:

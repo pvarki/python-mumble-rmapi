@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from mumblermapi.app import create_app
 from mumblermapi.config import Settings
+from mumblermapi.store import DatabaseSettings
 from mumblermapi.tickets import verify
 
 from .conftest import AGENT, RMAPI, TRAEFIK, Issued, Pki, as_, issue, user
@@ -30,7 +31,7 @@ def edge(*certs: Issued) -> dict[str, str]:
 
 
 @pytest.fixture(name="client")
-def client_fixture(pki: Pki, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+def client_fixture(pki: Pki, database: DatabaseSettings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """mumblermapi trusting the fixture PKI, which knows ALPHA 1 and BRAVO 2"""
     monkeypatch.setenv("MTLS_TRUST_L5D", "1")
     monkeypatch.setenv("MTLS_REQUIRE_L5D", "1")
@@ -38,7 +39,7 @@ def client_fixture(pki: Pki, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     bundle = tmp_path / "ca.pem"
     bundle.write_bytes(pki.root.cert.public_bytes(Encoding.PEM) + pki.ca.cert.public_bytes(Encoding.PEM))
     settings = Settings(
-        database=tmp_path / "db.sqlite",
+        database=database,
         templates_dir=tmp_path,
         ui_dir=tmp_path / "none",
         rmapi_identity=RMAPI,
@@ -153,9 +154,9 @@ def test_refuses_bad_browser_ids_and_other_fields(client: TestClient, pki: Pki, 
     assert client.post("/api/v1/voice/token", json=body, headers=edge(pki.alpha)).status_code == 422
 
 
-def test_no_bundle_no_tickets(tmp_path: Path, pki: Pki) -> None:
+def test_no_bundle_no_tickets(database: DatabaseSettings, tmp_path: Path, pki: Pki) -> None:
     """Without the CA bundle nothing can be checked, so nothing is minted"""
-    settings = Settings(database=tmp_path / "db.sqlite", ca_bundle=tmp_path / "missing.pem", ui_dir=tmp_path / "x")
+    settings = Settings(database=database, ca_bundle=tmp_path / "missing.pem", ui_dir=tmp_path / "x")
     client = TestClient(create_app(settings))
     assert client.post("/api/v1/voice/token", json=LAPTOP, headers=edge(pki.alpha)).status_code == 503
 

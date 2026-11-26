@@ -12,6 +12,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 import aiohttp
+from sqlalchemy.exc import SQLAlchemyError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -51,8 +52,20 @@ def _cause(answer: Answer) -> str:
     return answer if isinstance(answer, str) else f"HTTP {answer}"
 
 
+async def database_down(version: Callable[[], int]) -> str | None:
+    """Why the database did not answer the store's cheapest read in time, or None when it did"""
+    try:
+        await asyncio.wait_for(asyncio.to_thread(version), FETCH_SECONDS)
+    except TimeoutError:
+        return "timed out"
+    except SQLAlchemyError as exc:
+        return str(exc).splitlines()[0]
+    return None
+
+
 async def problems(
     fetch: Fetch,
+    version: Callable[[], int],
     proxy_ready_url: str,
     gateway_ready_url: str,
     presence_age: float,
@@ -73,6 +86,8 @@ async def problems(
             f"no ready Linkerd proxy in mumblermapi's pod ({_cause(answer)}): rmapi, murmur-agent and browser "
             "tickets are refused"
         )
+    if cause := await database_down(version):
+        found.append(f"the database cannot be reached ({cause}): tickets, user events and admin changes fail")
     if uptime > presence_ttl and presence_age > presence_ttl:
         since = "since mumblermapi started" if math.isinf(presence_age) else f"for {presence_age:.0f} s"
         found.append(f"murmur-agent has not reported {since}: Murmur or the agent is away or refused")
@@ -91,7 +106,13 @@ async def watch(app: Any, stop: asyncio.Event, presence_ttl: float) -> None:
             now = time.monotonic()
             received, _ = app.state.presence
             found = await problems(
-                fetch, settings.proxy_ready_url, settings.gateway_ready_url, now - received, now - started, presence_ttl
+                fetch,
+                app.state.store.version,
+                settings.proxy_ready_url,
+                settings.gateway_ready_url,
+                now - received,
+                now - started,
+                presence_ttl,
             )
             if found != app.state.health:
                 if found:

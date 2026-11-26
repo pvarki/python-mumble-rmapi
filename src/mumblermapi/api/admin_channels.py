@@ -15,7 +15,7 @@ from libpvarki.middleware import MTLSHeader
 from ..channels import GUARD, ChannelPlanError, ChannelSpec, load_yaml, parse_plan
 from ..store import Channel, NoSuchChannel, StoreError
 from .deps import AdminDep, StoreDep
-from .models import ChannelEdit, NewChannel
+from .models import Callsign, ChannelEdit, NewChannel
 
 LOGGER = logging.getLogger(__name__)
 MAX_PLAN_BYTES = 1 << 20  # an imported channel plan; a full plan of 1000 nets with members is about half of this
@@ -74,7 +74,7 @@ def clear_channels(who: AdminDep, store: StoreDep) -> dict[str, int]:
 
 
 @router.put("/channels/{channel_id}/members/{callsign}")
-def add_member(channel_id: int, callsign: str, _: AdminDep, store: StoreDep) -> None:
+def add_member(channel_id: int, callsign: Callsign, _: AdminDep, store: StoreDep) -> None:
     """Make a callsign a member of a channel"""
     if store.user(callsign) is None:
         raise HTTPException(status_code=404, detail=f"unknown callsign {callsign}")
@@ -85,7 +85,7 @@ def add_member(channel_id: int, callsign: str, _: AdminDep, store: StoreDep) -> 
 
 
 @router.delete("/channels/{channel_id}/members/{callsign}")
-def remove_member(channel_id: int, callsign: str, _: AdminDep, store: StoreDep) -> None:
+def remove_member(channel_id: int, callsign: Callsign, _: AdminDep, store: StoreDep) -> None:
     """Take a callsign off a channel"""
     try:
         store.set_member(channel_id, callsign, False)

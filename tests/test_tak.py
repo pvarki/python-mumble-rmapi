@@ -136,8 +136,8 @@ def fake_services(pki: Pki, calls: list[str], interop_ok: bool = True) -> web.Ap
 
 
 async def _cycle(
-    pki: Pki, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, interop_ok: bool = True
-) -> tuple[Store, TakSettings, list[str]]:
+    store: Store, pki: Pki, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, interop_ok: bool = True
+) -> tuple[TakSettings, list[str]]:
     calls: list[str] = []
     server = TestServer(fake_services(pki, calls, interop_ok))
     await server.start_server()
@@ -147,7 +147,6 @@ async def _cycle(
             tak_url=base.rstrip("/"), tak_server_name="tak.example.fi", cn="mumble.example.fi",
             rmapi_url=base, data_dir=tmp_path / "tak", poll_seconds=0.01,
         )  # fmt: skip
-        store = Store(tmp_path / "db.sqlite")
         stop = asyncio.Event()
         monkeypatch.setattr(tak, "tls_context", lambda _: False)
         original = store.set_missions
@@ -161,7 +160,7 @@ async def _cycle(
         await asyncio.wait_for(_until(lambda: stop.is_set() or len(calls) >= 4), 5)
         stop.set()
         await task
-        return store, settings, calls
+        return settings, calls
     finally:
         await server.close()
 
@@ -171,31 +170,33 @@ async def _until(condition: Any) -> None:
         await asyncio.sleep(0.01)
 
 
-def test_enrols_then_reads_missions(pki: Pki, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_enrols_then_reads_missions(store: Store, pki: Pki, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A certificate from rmapi, TAK rights via interop, then missions with subscribers into the store"""
-    store, settings, calls = asyncio.run(_cycle(pki, tmp_path, monkeypatch))
+    settings, calls = asyncio.run(_cycle(store, pki, tmp_path, monkeypatch))
     assert calls[:2] == ["sign:CN=mumble.example.fi", "interop:mumble.example.fi"]
     assert store.missions() == {"RECON": frozenset({"VOICE1", "VOICE3"})}
     assert settings.cert.exists() and settings.key.exists()
     assert settings.key.stat().st_mode & 0o077 == 0
 
 
-def test_refused_interop_keeps_old_identity(pki: Pki, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_refused_interop_keeps_old_identity(
+    store: Store, pki: Pki, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """If takrmapi refuses, the identity in use stays as it was (none here) and no missions are read"""
-    store, settings, calls = asyncio.run(_cycle(pki, tmp_path, monkeypatch, interop_ok=False))
+    settings, calls = asyncio.run(_cycle(store, pki, tmp_path, monkeypatch, interop_ok=False))
     assert "interop:mumble.example.fi" in calls
     assert not settings.cert.exists() and not settings.key.exists()
     assert store.missions() == {}
 
 
 def test_refused_interop_is_retried_with_the_same_certificate(
-    pki: Pki, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    store: Store, pki: Pki, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """rmapi signs once; later polls retry only the interop, and the accepted retry installs that certificate"""
-    _, settings, calls = asyncio.run(_cycle(pki, tmp_path, monkeypatch, interop_ok=False))
+    settings, calls = asyncio.run(_cycle(store, pki, tmp_path, monkeypatch, interop_ok=False))
     assert calls.count("sign:CN=mumble.example.fi") == 1 and calls.count("interop:mumble.example.fi") >= 2
     pending = (settings.data_dir / "tak.pem.new").read_bytes()
-    store, settings, calls = asyncio.run(_cycle(pki, tmp_path, monkeypatch))
+    settings, calls = asyncio.run(_cycle(store, pki, tmp_path, monkeypatch))
     assert calls[0] == "interop:mumble.example.fi" and "sign:CN=mumble.example.fi" not in calls
     assert settings.cert.read_bytes() == pending and settings.key.exists()
     assert store.missions() == {"RECON": frozenset({"VOICE1", "VOICE3"})}

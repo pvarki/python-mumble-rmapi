@@ -11,7 +11,7 @@ from libpvarki.middleware import MTLSHeader
 
 from ..identity import normalize_callsign
 from .deps import AdminDep, StoreDep
-from .models import VoiceSetting
+from .models import Callsign, VoiceSetting
 from .murmur_agent import presence_of
 
 LOGGER = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ def list_users(request: Request, _: AdminDep, store: StoreDep) -> list[dict[str,
 
 
 @router.put("/users/{callsign}/voice")
-def set_voice(callsign: str, setting: VoiceSetting, who: AdminDep, store: StoreDep) -> None:
+def set_voice(callsign: Callsign, setting: VoiceSetting, who: AdminDep, store: StoreDep) -> None:
     """Turn voice off or on for one callsign, without touching their Deploy App identity"""
     if store.user(callsign) is None:
         raise HTTPException(status_code=404, detail=f"unknown callsign {callsign}")

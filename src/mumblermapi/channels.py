@@ -105,8 +105,8 @@ def _parse_list(items: object, where: str, room: _Room, depth: int = 1) -> tuple
             raise ChannelPlanError(f"{at}: invalid name {shown}")
         if name in seen:
             raise ChannelPlanError(f"{at}: duplicate name {name!r}")
-        if not isinstance(description, str) or len(description) > MAX_DESCRIPTION:
-            raise ChannelPlanError(f"{at}: description must be text of at most {MAX_DESCRIPTION} characters")
+        if not isinstance(description, str) or len(description) > MAX_DESCRIPTION or "\x00" in description:
+            raise ChannelPlanError(f"{at}: description must be text of at most {MAX_DESCRIPTION} characters, no NUL")
         access = item.get("access", "")
         if access not in ("", *ACCESS):
             raise ChannelPlanError(f"{at}: access must be one of {', '.join(ACCESS)}")

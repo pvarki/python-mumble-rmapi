@@ -1,0 +1,18 @@
+# The Postgres the tests run against (conftest.py), started by pytest-docker
+services:
+  postgres:
+    image: postgres:18.3
+    environment:
+      POSTGRES_USER: mumble
+      POSTGRES_DB: mumble
+      POSTGRES_PASSWORD: mumbletestpwd # pragma: allowlist secret
+      # As CloudNativePG creates databases; the locale sets the order names sort in
+      POSTGRES_INITDB_ARGS: --locale=C --encoding=UTF8
+    ports:
+      - "5432"
+    healthcheck:
+      # Over TCP: while it initialises, the image runs a server on its socket only
+      test: pg_isready --host=127.0.0.1 --username=mumble --dbname=mumble
+      interval: 1s
+      timeout: 5s
+      retries: 30

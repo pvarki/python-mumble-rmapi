@@ -59,6 +59,7 @@ def test_load_plan(tmp_path: Path) -> None:
         ({"channels": [{"name": "Alpha\n"}]}, "invalid name"),
         ({"channels": [{"name": "a", "description": 3}]}, "description"),
         ({"channels": [{"name": "a", "description": "x" * 1001}]}, "at most 1000 characters"),
+        ({"channels": [{"name": "a", "description": "a\x00b"}]}, "no NUL"),  # Postgres text cannot hold it
         ({"channels": [{"name": "a"}, {"name": "a"}]}, "duplicate"),
         ({"channels": [{"name": "a", "access": "secret"}]}, "access must be"),
         ({"channels": [{"name": "a", "channels": [{"name": True}]}]}, r"channels\[0\]\.channels\[0\]"),

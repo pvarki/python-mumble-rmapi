@@ -19,6 +19,9 @@ def test_voice_off_for_one_callsign(client: TestClient) -> None:
     assert (
         client.put("/api/v1/admin/users/GHOST/voice", json={"enabled": False}, headers=as_("VOICE1")).status_code == 404
     )
+    assert (
+        client.put("/api/v1/admin/users/A%00B/voice", json={"enabled": False}, headers=as_("VOICE1")).status_code == 422
+    )
     assert client.get("/api/v1/agent/state", headers=as_(AGENT)).json()["refused"] == ["VOICE3"]
     client.put("/api/v1/admin/users/VOICE3/voice", json={"enabled": True}, headers=as_("VOICE1"))
     assert client.get("/api/v1/agent/state", headers=as_(AGENT)).json()["refused"] == []

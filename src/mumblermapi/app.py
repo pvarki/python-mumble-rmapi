@@ -16,7 +16,7 @@ from .api.murmur_agent import PRESENCE_TTL
 from .config import UI_PATH, Settings
 from .health import watch as watch_health
 from .identity import CertVerifier
-from .store import Store
+from .store import Store, engine
 from .tak import watch
 
 
@@ -33,7 +33,7 @@ class UiFiles(StaticFiles):
 def create_app(settings: Settings | None = None) -> FastAPI:
     """The FastAPI app"""
     settings = settings or Settings.from_env()
-    store = Store(settings.database)
+    store = Store(engine(settings.database.url))
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:

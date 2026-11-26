@@ -2,18 +2,22 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
+from fastapi import Path
 from pydantic import BaseModel, ConfigDict, Field
 
 Access = Literal["open", "invite", "inherit"]
+# Postgres text cannot hold NUL
+Description = Annotated[str, Field(max_length=1000, pattern=r"^[^\x00]*$")]
+Callsign = Annotated[str, Path(pattern=r"^[^\x00]+$")]
 
 
 class NewChannel(BaseModel):
     """A channel to create"""
 
     name: str = Field(min_length=1, max_length=100)
-    description: str = Field(default="", max_length=1000)
+    description: Description = ""
     parent: int = 0
     access: Access | None = None
 
@@ -22,7 +26,7 @@ class ChannelEdit(BaseModel):
     """A new name, description or access for a channel; omitted fields stay"""
 
     name: str | None = Field(default=None, min_length=1, max_length=100)
-    description: str | None = Field(default=None, max_length=1000)
+    description: Description | None = None
     access: Access | None = None
 
 

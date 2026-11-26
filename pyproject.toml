@@ -11,8 +11,10 @@ dependencies = [
     "cryptography>=46.0",
     "fastapi>=0.143,<1.0",
     "libpvarki>=2.2,<3.0",
+    "psycopg2-binary>=2.9,<3.0",
     "pydantic>=2.14,<3.0",
     "pyyaml>=6.0,<7.0",
+    "sqlmodel>=0.0.37,<1.0",
     "uvicorn>=0.30,<1.0",
 ]
 
@@ -27,6 +29,7 @@ dev = [
     "pyrefly>=1.3,<2",
     "pytest>=8.0,<9.0",
     "pytest-cov>=6.0,<7.0",
+    "pytest-docker>=3.2,<4.0",
     "types-pyyaml>=6.0,<7.0",
 ]
 
@@ -66,3 +69,8 @@ ignore_missing_imports = true
 replace-imports-with-any = ["Ice", "MumbleServer"]
 # The tests are a package of their own beside src
 search-path = ["src", "."]
+
+[[tool.pyrefly.sub-config]]
+# Table classes name their table with a plain string where SQLModel declares a declared_attr
+matches = "src/mumblermapi/store/tables.py"
+errors = { bad-override = false }

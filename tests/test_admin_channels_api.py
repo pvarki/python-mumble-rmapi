@@ -19,10 +19,12 @@ def test_admin_channel_management(client: TestClient) -> None:
     assert client.put(f"/api/v1/admin/channels/{squad}/members/VOICE3", headers=as_("VOICE1")).status_code == 200
     assert client.put(f"/api/v1/admin/channels/{squad}/members/GHOST", headers=as_("VOICE1")).status_code == 404
     assert client.put("/api/v1/admin/channels/999/members/VOICE3", headers=as_("VOICE1")).status_code == 404
+    assert client.put(f"/api/v1/admin/channels/{squad}/members/A%00B", headers=as_("VOICE1")).status_code == 422
     tree = client.get("/api/v1/admin/channels", headers=as_("VOICE1")).json()
     assert tree[0]["children"][0]["members"] == ["VOICE3"]
     assert client.delete(f"/api/v1/admin/channels/{squad}/members/VOICE3", headers=as_("VOICE1")).status_code == 200
     assert client.delete("/api/v1/admin/channels/999/members/VOICE3", headers=as_("VOICE1")).status_code == 404
+    assert client.delete(f"/api/v1/admin/channels/{squad}/members/A%00B", headers=as_("VOICE1")).status_code == 422
 
     new = client.post(
         "/api/v1/admin/channels", json={"name": "07 TJ", "description": "Tulenjohto"}, headers=as_("VOICE1")
@@ -32,6 +34,8 @@ def test_admin_channel_management(client: TestClient) -> None:
     assert client.post("/api/v1/admin/channels", json={"name": "a/b"}, headers=as_("VOICE1")).status_code == 400
     too_long = {"name": "08", "description": "x" * 1001}
     assert client.post("/api/v1/admin/channels", json=too_long, headers=as_("VOICE1")).status_code == 422
+    with_nul = {"name": "08", "description": "a\x00b"}
+    assert client.post("/api/v1/admin/channels", json=with_nul, headers=as_("VOICE1")).status_code == 422
     cross_site_form = as_("VOICE1") | {"Content-Type": "text/plain"}
     assert client.post("/api/v1/admin/channels", content='{"name": "X"}', headers=cross_site_form).status_code == 422
     assert client.delete(f"/api/v1/admin/channels/{new.json()['id']}", headers=as_("VOICE1")).status_code == 200
@@ -49,6 +53,9 @@ def test_plan_export_and_import(client: TestClient) -> None:
     assert added.json() == {"created": 1}
     bad = client.post("/api/v1/admin/channels/import", content="nets: []", headers=yaml_from)
     assert bad.status_code == 400
+    with_nul = 'channels:\n  - name: 30\n  - name: 31\n    description: "a\\0b"\n'
+    assert client.post("/api/v1/admin/channels/import", content=with_nul, headers=yaml_from).status_code == 400
+    assert [c["name"] for c in client.get("/api/v1/admin/channels", headers=as_("VOICE1")).json()] == ["10", "20"]
     merged = client.post(
         "/api/v1/admin/channels/import", content="a: &a {name: 40}\nchannels: [{<<: *a}]", headers=yaml_from
     )
@@ -105,6 +112,7 @@ def test_edit_channel(client: TestClient) -> None:
     client.post("/api/v1/admin/channels", json={"name": "20"}, headers=as_("VOICE1"))
     assert client.patch(url, json={"name": "20"}, headers=as_("VOICE1")).status_code == 400
     assert client.patch(url, json={"name": "a/b"}, headers=as_("VOICE1")).status_code == 400
+    assert client.patch(url, json={"description": "a\x00b"}, headers=as_("VOICE1")).status_code == 422
     assert client.patch("/api/v1/admin/channels/999", json={"name": "x"}, headers=as_("VOICE1")).status_code == 404
 
 

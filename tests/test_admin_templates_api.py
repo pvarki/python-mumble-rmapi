@@ -29,7 +29,7 @@ def test_templates(client: TestClient) -> None:
 
 def test_templates_dir_missing(tmp_path: Path) -> None:
     """Without a templates directory there is simply nothing to offer"""
-    settings = Settings(database=tmp_path / "db.sqlite", templates_dir=tmp_path / "none")
+    settings = Settings(templates_dir=tmp_path / "none")
     assert templates(settings) == {}
 
 

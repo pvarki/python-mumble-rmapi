@@ -20,7 +20,7 @@ One image, three parts:
   - reports who is connected where back to mumblermapi
 - **`mumblermapi`** is the registered rmapi product, in its own pod. It:
   - receives rmapi's user events
-  - keeps the `Units/` nets and their members in SQLite
+  - keeps users, the `Units/` nets and their members in Postgres
   - reads TAK missions and their subscribers with a plain TAK user identity, obtained through rmapi's
     product interop
   - serves the agent's desired state, the admin API and the UI remote
@@ -64,11 +64,19 @@ kubelet probes it too and a restart mends none of what it finds. `healthy` and `
 every 15 s and logs each change:
 
 - `no ready Linkerd proxy in mumblermapi's pod (<cause>)`: rmapi, murmur-agent and browser tickets are refused
+- `the database cannot be reached (<cause>)`: tickets, user events and admin changes fail
 - `murmur-agent has not reported for <n> s` (or since mumblermapi started): Murmur or the agent is away or refused
 - `the voice gateway is not ready (<cause>)`: browsers cannot talk
 
 `<cause>` is the HTTP status that came back, or why none did: `name resolution failed`, `connection refused` or
-`timed out` (after 2 s). A failed lookup points at the cluster, such as in-cluster DNS or the node, not at voice.
+`timed out` (after 2 s). For the database it is the first line of the driver's error, or `timed out`. A failed
+lookup points at the cluster, such as in-cluster DNS or the node, not at voice.
+
+## Database
+
+mumblermapi keeps its state in its own CloudNativePG cluster, `mumble-postgres`. It creates its tables at start
+with SQLModel's `create_all`, as rmapi does. That only adds missing tables, so a change to an existing table needs a
+migration of its own.
 
 ## Configuration
 
@@ -77,19 +85,20 @@ Like every Deploy App product, mumblermapi reads the product manifest the platfo
 (`rasenmaeher.mtls.base_uri`), and its own name (`product.dns`), which is its TAK identity's CN. Without a
 manifest the in-cluster defaults apply. The variables below override it.
 
-| Variable                                                                                           | Used by     | Meaning                                                                                                                                                                                                           |
-| -------------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MURMUR_ICE_SECRET`                                                                                | agent       | Murmur's Ice write secret (required)                                                                                                                                                                              |
-| `AGENT_STATE_URL`                                                                                  | agent       | mumblermapi's `/api/v1/agent/state`; unset runs on `AGENT_CHANNELS_FILE` alone                                                                                                                                    |
-| `AGENT_PRESENCE_URL`                                                                               | agent       | mumblermapi's `/api/v1/agent/presence`; unset reports nothing                                                                                                                                                     |
-| `AGENT_CA_BUNDLE`, `AGENT_DATA_DIR`, `AGENT_OCSP_URL`, `AGENT_POLL_SECONDS`, `AGENT_SWEEP_SECONDS` | agent       | see `agent/config.py`                                                                                                                                                                                             |
-| `MUMBLERMAPI_DATABASE`, `MUMBLERMAPI_TEMPLATES_DIR`, `MUMBLERMAPI_UI_DIR`                          | mumblermapi | SQLite file, channel plan templates admins may apply (`*.yaml`: `name`, `description`, `channels`, each channel with an optional `access` of `open`, `invite` or `inherit`; none is applied by default), built UI |
-| `MUMBLERMAPI_RMAPI_IDENTITY`, `MUMBLERMAPI_AGENT_IDENTITY`                                         | mumblermapi | Linkerd identities allowed to send user events and read agent state                                                                                                                                               |
-| `MUMBLERMAPI_TRAEFIK_IDENTITY`, `MUMBLERMAPI_CA_BUNDLE`                                            | mumblermapi | The edge whose forwarded certificate voice tickets are minted for, and the CAs it must chain to                                                                                                                   |
-| `AGENT_GATEWAY_CA`                                                                                 | agent       | The voice gateway's CA; unset lets no browser in                                                                                                                                                                  |
-| `MUMBLERMAPI_PROXY_READY_URL`, `MUMBLERMAPI_GATEWAY_READY_URL`                                     | mumblermapi | What the health check asks: this pod's Linkerd proxy, default `http://127.0.0.1:4191/ready`, and the voice gateway's `/readyz`; empty skips that check                                                            |
-| `MUMBLERMAPI_TAK_URL`, `MUMBLERMAPI_TAK_SERVER_NAME`, `MUMBLERMAPI_TAK_CN`                         | mumblermapi | TAK's API, the name on TAK's certificate, our TAK identity's CN (default: the manifest's `product.dns`); unset leaves `Missions/` empty                                                                           |
-| `MUMBLERMAPI_RMAPI_URL`                                                                            | mumblermapi | rmapi, for our TAK certificate and TAK rights (default: the manifest's `rasenmaeher.mtls.base_uri`)                                                                                                               |
+| Variable                                                                                           | Used by     | Meaning                                                                                                                                                                                              |
+| -------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MURMUR_ICE_SECRET`                                                                                | agent       | Murmur's Ice write secret (required)                                                                                                                                                                 |
+| `AGENT_STATE_URL`                                                                                  | agent       | mumblermapi's `/api/v1/agent/state`; unset runs on `AGENT_CHANNELS_FILE` alone                                                                                                                       |
+| `AGENT_PRESENCE_URL`                                                                               | agent       | mumblermapi's `/api/v1/agent/presence`; unset reports nothing                                                                                                                                        |
+| `AGENT_CA_BUNDLE`, `AGENT_DATA_DIR`, `AGENT_OCSP_URL`, `AGENT_POLL_SECONDS`, `AGENT_SWEEP_SECONDS` | agent       | see `agent/config.py`                                                                                                                                                                                |
+| `MUMBLERMAPI_DATABASE_HOST`, `_PORT`, `_NAME`, `_USER`, `_PASSWORD`                                | mumblermapi | mumblermapi's Postgres, from CloudNativePG's app secret (`host`, `port`, `dbname`, `username`, `password`); default `mumble-postgres-rw:5432`, database and user `mumble`                            |
+| `MUMBLERMAPI_TEMPLATES_DIR`, `MUMBLERMAPI_UI_DIR`                                                  | mumblermapi | Channel plan templates admins may apply (`*.yaml`: `name`, `description`, `channels`, each channel with an optional `access` of `open`, `invite` or `inherit`; none is applied by default), built UI |
+| `MUMBLERMAPI_RMAPI_IDENTITY`, `MUMBLERMAPI_AGENT_IDENTITY`                                         | mumblermapi | Linkerd identities allowed to send user events and read agent state                                                                                                                                  |
+| `MUMBLERMAPI_TRAEFIK_IDENTITY`, `MUMBLERMAPI_CA_BUNDLE`                                            | mumblermapi | The edge whose forwarded certificate voice tickets are minted for, and the CAs it must chain to                                                                                                      |
+| `AGENT_GATEWAY_CA`                                                                                 | agent       | The voice gateway's CA; unset lets no browser in                                                                                                                                                     |
+| `MUMBLERMAPI_PROXY_READY_URL`, `MUMBLERMAPI_GATEWAY_READY_URL`                                     | mumblermapi | What the health check asks: this pod's Linkerd proxy, default `http://127.0.0.1:4191/ready`, and the voice gateway's `/readyz`; empty skips that check                                               |
+| `MUMBLERMAPI_TAK_URL`, `MUMBLERMAPI_TAK_SERVER_NAME`, `MUMBLERMAPI_TAK_CN`                         | mumblermapi | TAK's API, the name on TAK's certificate, our TAK identity's CN (default: the manifest's `product.dns`); unset leaves `Missions/` empty                                                              |
+| `MUMBLERMAPI_RMAPI_URL`                                                                            | mumblermapi | rmapi, for our TAK certificate and TAK rights (default: the manifest's `rasenmaeher.mtls.base_uri`)                                                                                                  |
 
 Mission nets need takrmapi's `/api/v1/interop/add` and rmapi calling it without a double slash. Both are
 upstream changes that `VOICE-PLAN.md` tracks.
@@ -98,7 +107,7 @@ upstream changes that `VOICE-PLAN.md` tracks.
 
 ```bash
 uv sync
-uv run pytest
+uv run pytest  # starts a Postgres in Docker (tests/docker-compose.yml)
 uv run mypy src tests
 
 pnpm -C ui install

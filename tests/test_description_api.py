@@ -22,4 +22,4 @@ def test_v2_descriptions(client: TestClient) -> None:
     remote = client.get("/ui/mumble/remoteEntry.js")
     assert remote.status_code == 200 and "javascript" in remote.headers["content-type"]
     assert remote.headers["cache-control"] == "no-cache"  # a new release shows on the next load
-    assert client.get("/ui/mumble/%2e%2e/db.sqlite").status_code == 404
+    assert client.get("/ui/mumble/%2e%2e/templates/company.yaml").status_code == 404

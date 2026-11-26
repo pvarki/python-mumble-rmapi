@@ -10,6 +10,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from . import kraftwerk
+from .store import DatabaseSettings
 from .tak import TakSettings
 
 SHORTNAME = "mumble"
@@ -19,7 +20,7 @@ UI_PATH = f"/ui/{SHORTNAME}"  # where Traefik serves the UI remote, on rmui's mT
 class Settings(BaseModel):
     """Where things are and who the peers are; from the environment and the product manifest"""
 
-    database: Path = Path("/data/mumblermapi.db")
+    database: DatabaseSettings = DatabaseSettings()
     templates_dir: Path = Path("/templates")  # channel plan templates an admin may choose to apply
     ui_dir: Path = Path("/ui")  # the built UI remote, served at UI_PATH when present
     tak: TakSettings | None = None  # where to read missions from; None leaves Missions/ empty
@@ -40,7 +41,7 @@ class Settings(BaseModel):
         manifest = kraftwerk.read() if manifest is None else manifest
         rmapi_identity = kraftwerk.value(manifest, "rasenmaeher", "certcn") or cls().rmapi_identity
         return cls(
-            database=Path(env.get("MUMBLERMAPI_DATABASE", cls().database)),
+            database=DatabaseSettings.from_env(env),
             templates_dir=Path(env.get("MUMBLERMAPI_TEMPLATES_DIR", cls().templates_dir)),
             ui_dir=Path(env.get("MUMBLERMAPI_UI_DIR", cls().ui_dir)),
             tak=TakSettings.from_env(env, manifest),
