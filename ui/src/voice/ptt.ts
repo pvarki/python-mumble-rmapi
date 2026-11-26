@@ -1,5 +1,4 @@
-// The push-to-talk binding and this browser's id, both remembered per browser. No imports, so
-// `node --test` can load this file directly.
+// The push-to-talk binding and this browser's id, both remembered per browser
 
 // A key by its physical position (KeyboardEvent.code), so the layout does not matter, or an extra mouse
 // button. Bluetooth PTT buttons that act as keyboards arrive as keys too.

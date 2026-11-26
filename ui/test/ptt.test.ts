@@ -1,6 +1,5 @@
-// Unit tests for the push-to-talk binding and the browser id: `pnpm test`.
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+// The push-to-talk binding and the browser id
+import { describe, expect, it } from "vitest";
 
 import {
   DEFAULT_BINDING,
@@ -12,19 +11,20 @@ import {
   parseBinding,
   saveBinding,
   talksOn,
-} from "../src/voice/ptt.ts";
+  type Binding,
+} from "../src/voice/ptt";
 
 function memory() {
-  const data = new Map();
+  const data = new Map<string, string>();
   return {
     data,
-    getItem: (k) => (data.has(k) ? data.get(k) : null),
-    setItem: (k, v) => data.set(k, v),
+    getItem: (k: string) => data.get(k) ?? null,
+    setItem: (k: string, v: string) => data.set(k, v),
   };
 }
 
 const broken = {
-  getItem() {
+  getItem(): string | null {
     throw new Error("blocked");
   },
   setItem() {
@@ -35,12 +35,12 @@ const broken = {
 describe("binding", () => {
   it("defaults to Tab and survives a round trip", () => {
     const store = memory();
-    assert.deepEqual(loadBinding(store), { kind: "key", code: "Tab" });
-    assert.deepEqual(DEFAULT_BINDING, { kind: "key", code: "Tab" });
+    expect(loadBinding(store)).toEqual({ kind: "key", code: "Tab" });
+    expect(DEFAULT_BINDING).toEqual({ kind: "key", code: "Tab" });
     saveBinding(store, { kind: "key", code: "F12" });
-    assert.deepEqual(loadBinding(store), { kind: "key", code: "F12" });
+    expect(loadBinding(store)).toEqual({ kind: "key", code: "F12" });
     saveBinding(store, { kind: "mouse", button: 3 });
-    assert.deepEqual(loadBinding(store), { kind: "mouse", button: 3 });
+    expect(loadBinding(store)).toEqual({ kind: "mouse", button: 3 });
   });
   it("falls back on anything it cannot use", () => {
     for (const raw of [
@@ -56,32 +56,34 @@ describe("binding", () => {
       '{"kind":"mouse","button":"3"}',
       '{"kind":"pedal"}',
     ]) {
-      assert.deepEqual(parseBinding(raw), DEFAULT_BINDING, String(raw));
+      expect(parseBinding(raw), String(raw)).toEqual(DEFAULT_BINDING);
     }
   });
   it("works without storage", () => {
-    assert.deepEqual(loadBinding(broken), DEFAULT_BINDING);
-    assert.deepEqual(loadBinding(null), DEFAULT_BINDING);
+    expect(loadBinding(broken)).toEqual(DEFAULT_BINDING);
+    expect(loadBinding(null)).toEqual(DEFAULT_BINDING);
     saveBinding(broken, { kind: "key", code: "KeyT" });
   });
   it("labels keys and buttons", () => {
-    assert.equal(bindingLabel({ kind: "key", code: "KeyT" }), "T");
-    assert.equal(bindingLabel({ kind: "key", code: "Digit5" }), "5");
-    assert.equal(bindingLabel({ kind: "key", code: "F12" }), "F12");
-    assert.equal(bindingLabel({ kind: "mouse", button: 3 }), "Mouse 4");
+    expect(bindingLabel({ kind: "key", code: "KeyT" })).toBe("T");
+    expect(bindingLabel({ kind: "key", code: "Digit5" })).toBe("5");
+    expect(bindingLabel({ kind: "key", code: "F12" })).toBe("F12");
+    expect(bindingLabel({ kind: "mouse", button: 3 })).toBe("Mouse 4");
   });
   it("matches only its own key or button", () => {
-    const key = { kind: "key", code: "Space" };
-    const mouse = { kind: "mouse", button: 4 };
-    assert.ok(
+    const key: Binding = { kind: "key", code: "Space" };
+    const mouse: Binding = { kind: "mouse", button: 4 };
+    expect(
       isKey(key, "Space") && !isKey(key, "Enter") && !isKey(mouse, "Space"),
+    ).toBe(true);
+    expect(isButton(mouse, 4) && !isButton(mouse, 3) && !isButton(key, 4)).toBe(
+      true,
     );
-    assert.ok(isButton(mouse, 4) && !isButton(mouse, 3) && !isButton(key, 4));
   });
 });
 
 describe("talksOn", () => {
-  const press = (code, mods = {}) => ({
+  const press = (code: string, mods: Partial<KeyboardEvent> = {}) => ({
     code,
     shiftKey: false,
     ctrlKey: false,
@@ -89,26 +91,26 @@ describe("talksOn", () => {
     metaKey: false,
     ...mods,
   });
-  const tab = { kind: "key", code: "Tab" };
+  const tab: Binding = { kind: "key", code: "Tab" };
   it("talks on the bound key alone", () => {
-    assert.ok(talksOn(tab, press("Tab")));
-    assert.ok(!talksOn(tab, press("Space")));
-    assert.ok(!talksOn({ kind: "mouse", button: 3 }, press("Tab")));
+    expect(talksOn(tab, press("Tab"))).toBe(true);
+    expect(talksOn(tab, press("Space"))).toBe(false);
+    expect(talksOn({ kind: "mouse", button: 3 }, press("Tab"))).toBe(false);
   });
   it("leaves Shift+Tab and shortcuts to the page", () => {
     for (const mod of ["shiftKey", "ctrlKey", "altKey", "metaKey"]) {
-      assert.ok(!talksOn(tab, press("Tab", { [mod]: true })), mod);
+      expect(talksOn(tab, press("Tab", { [mod]: true })), mod).toBe(false);
     }
   });
   it("still talks when the bound key is itself a modifier", () => {
-    const ctrl = { kind: "key", code: "ControlRight" };
-    assert.ok(talksOn(ctrl, press("ControlRight", { ctrlKey: true })));
-    assert.ok(
+    const ctrl: Binding = { kind: "key", code: "ControlRight" };
+    expect(talksOn(ctrl, press("ControlRight", { ctrlKey: true }))).toBe(true);
+    expect(
       talksOn(
         { kind: "key", code: "ShiftLeft" },
         press("ShiftLeft", { shiftKey: true }),
       ),
-    );
+    ).toBe(true);
   });
 });
 
@@ -117,10 +119,7 @@ describe("browser", () => {
   it("keeps a valid stored id", () => {
     const store = memory();
     store.setItem("mumble.browser", id);
-    assert.equal(
-      loadBrowser(store, () => assert.fail("fresh")),
-      id,
-    );
+    expect(loadBrowser(store, () => expect.unreachable("fresh"))).toBe(id);
   });
   it("replaces a missing or malformed id and stores the new one", () => {
     for (const bad of [
@@ -133,22 +132,15 @@ describe("browser", () => {
     ]) {
       const store = memory();
       if (bad !== null) store.setItem("mumble.browser", bad);
-      assert.equal(
+      expect(
         loadBrowser(store, () => id),
-        id,
         String(bad),
-      );
-      assert.equal(store.data.get("mumble.browser"), id);
+      ).toBe(id);
+      expect(store.data.get("mumble.browser")).toBe(id);
     }
   });
   it("gives a fresh id without storage", () => {
-    assert.equal(
-      loadBrowser(broken, () => id),
-      id,
-    );
-    assert.equal(
-      loadBrowser(null, () => id),
-      id,
-    );
+    expect(loadBrowser(broken, () => id)).toBe(id);
+    expect(loadBrowser(null, () => id)).toBe(id);
   });
 });

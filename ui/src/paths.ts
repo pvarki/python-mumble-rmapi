@@ -1,5 +1,4 @@
-// Pure derivations every view reads: net labels, each unit net's effective access rule, who is where, and
-// search. No imports at runtime, so `node --test` can load this file directly.
+// Pure derivations every view reads: net labels, each unit net's effective access rule, who is where, and search
 import type { Access, Channel, Mission, User } from "./api";
 
 export const UNITS = "/Units/";

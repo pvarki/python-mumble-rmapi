@@ -1,4 +1,4 @@
-// The talk panel's view of Murmur's channel tree. Only type imports, so `node --test` can load this file.
+// The talk panel's view of Murmur's channel tree
 import type { Net, Person } from "./client";
 
 export interface NetRow {

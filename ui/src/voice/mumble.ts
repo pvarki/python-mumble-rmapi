@@ -1,6 +1,6 @@
 // The Mumble protocol as the browser speaks it through the voice gateway: one whole TCP message (6-byte header
 // plus protobuf body) per WebSocket frame, with voice in UDPTunnel messages in the legacy (1.4) packet format.
-// Only the fields the talk panel reads are decoded. No imports, so `node --test` can load this file directly.
+// Only the fields the talk panel reads are decoded.
 
 export const MSG = {
   UDPTunnel: 1,

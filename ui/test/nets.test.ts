@@ -1,13 +1,15 @@
-// Unit tests for the talk panel's net list: `pnpm test`.
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+// The talk panel's net list
+import { describe, expect, it } from "vitest";
 
-import { callsignOf, isBrowser, netPath, netRows } from "../src/voice/nets.ts";
+import type { Net, Person } from "../src/voice/client";
+import { callsignOf, isBrowser, netPath, netRows } from "../src/voice/nets";
 
-const net = (id, parent, name, canEnter = true) => [
-  id,
-  { id, parent, name, canEnter },
-];
+const net = (
+  id: number,
+  parent: number,
+  name: string,
+  canEnter = true,
+): [number, Net] => [id, { id, parent, name, canEnter }];
 const NETS = new Map([
   net(0, 0, "Root"),
   net(1, 0, "Units"),
@@ -23,7 +25,7 @@ const NETS = new Map([
   net(11, 0, "Extra"), // not one of the known groups: after them
   net(12, 11, "x"),
 ]);
-const PEOPLE = new Map([
+const PEOPLE = new Map<number, Person>([
   [
     1,
     {
@@ -53,43 +55,40 @@ const PEOPLE = new Map([
 describe("netRows", () => {
   it("lists what the user may enter, units first, with closed nets above them as context", () => {
     const rows = netRows(NETS, PEOPLE);
-    assert.deepEqual(
-      rows.map((r) => [r.path, r.depth, r.joinable, r.count]),
-      [
-        ["Units", 0, false, 0],
-        ["Units › 00 Tehtäväkanavat", 1, false, 0],
-        ["Units › 00 Tehtäväkanavat › 00A TIKE", 2, true, 2],
-        ["Units › 2", 1, true, 0],
-        ["Units › 10", 1, true, 0],
-        ["Missions", 0, false, 0],
-        ["Missions › Guard", 1, true, 1],
-        ["Extra", 0, false, 0],
-        ["Extra › x", 1, true, 0],
-      ],
-    );
+    expect(rows.map((r) => [r.path, r.depth, r.joinable, r.count])).toEqual([
+      ["Units", 0, false, 0],
+      ["Units › 00 Tehtäväkanavat", 1, false, 0],
+      ["Units › 00 Tehtäväkanavat › 00A TIKE", 2, true, 2],
+      ["Units › 2", 1, true, 0],
+      ["Units › 10", 1, true, 0],
+      ["Missions", 0, false, 0],
+      ["Missions › Guard", 1, true, 1],
+      ["Extra", 0, false, 0],
+      ["Extra › x", 1, true, 0],
+    ]);
   });
   it("is empty before Murmur has sent anything", () => {
-    assert.deepEqual(netRows(new Map(), new Map()), []);
+    expect(netRows(new Map(), new Map())).toEqual([]);
   });
 });
 
 describe("netPath", () => {
   it("names a net from the top, without Murmur's root", () => {
-    assert.equal(netPath(NETS, 3), "Units › 00 Tehtäväkanavat › 00A TIKE");
-    assert.equal(netPath(NETS, 0), "");
-    assert.equal(netPath(NETS, 99), "");
+    expect(netPath(NETS, 3)).toBe("Units › 00 Tehtäväkanavat › 00A TIKE");
+    expect(netPath(NETS, 0)).toBe("");
+    expect(netPath(NETS, 99)).toBe("");
   });
   it("stops on a loop", () => {
     const loop = new Map([net(1, 2, "a"), net(2, 1, "b")]);
-    assert.ok(netPath(loop, 1).split(" › ").length <= 33);
+    expect(netPath(loop, 1).split(" › ").length).toBeLessThanOrEqual(33);
   });
 });
 
 describe("usernames", () => {
   it("show the callsign and tell browsers from phones", () => {
-    assert.equal(callsignOf("VOICE_1---web-2"), "VOICE 1");
-    assert.equal(callsignOf("BARE"), "BARE");
-    assert.ok(isBrowser("A---web-1") && isBrowser("A---WEB-9"));
-    assert.ok(!isBrowser("A---vs1") && !isBrowser("A"));
+    expect(callsignOf("VOICE_1---web-2")).toBe("VOICE 1");
+    expect(callsignOf("BARE")).toBe("BARE");
+    expect(isBrowser("A---web-1") && isBrowser("A---WEB-9")).toBe(true);
+    expect(!isBrowser("A---vs1") && !isBrowser("A")).toBe(true);
   });
 });
