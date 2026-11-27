@@ -4,26 +4,52 @@ export interface GuideStep {
   id: string;
   title: string; // i18n key
   description: string; // i18n key
+  // i18n keys of the step's picture, a file in public/guide, and its alt text
+  image?: { file: string; alt: string };
 }
 
-const step = (id: string): GuideStep => ({
+// Where someone talks: here in the browser, or in ATAK with OD Voice
+export const PLATFORMS = ["browser", "android"] as const;
+export type Platform = (typeof PLATFORMS)[number];
+
+// vite.config.ts serves public/ under its base, /ui/mumble/
+export const GUIDE_FILES = "/ui/mumble/guide/";
+
+const step = (id: string, pictured = false): GuideStep => ({
   id,
   title: `guide.steps.${id}.title`,
   description: `guide.steps.${id}.description`,
+  ...(pictured && {
+    image: {
+      file: `guide.steps.${id}.image`,
+      alt: `guide.steps.${id}.alt`,
+    },
+  }),
 });
+
+const TALK: Record<Platform, GuideStep[]> = {
+  browser: [step("join"), step("talk", true)],
+  android: [step("plugin", true), step("ptt", true)],
+};
 
 export function guideSteps({
   voice,
   admin,
+  platform = "browser",
 }: {
   voice: boolean;
   admin: boolean;
+  platform?: Platform;
 }): GuideStep[] {
   return [
-    ...(voice ? ["intro", "join", "talk", "nets"] : []),
-    ...(admin ? ["units", "fixed"] : []),
-  ].map(step);
+    ...(voice ? [step("intro"), ...TALK[platform], step("nets")] : []),
+    ...(admin ? [step("units"), step("fixed")] : []),
+  ];
 }
+
+// The platform the guide starts on: ATAK on Android, the browser anywhere else
+export const detectPlatform = (userAgent = navigator.userAgent): Platform =>
+  /android/i.test(userAgent) ? "android" : "browser";
 
 // Per callsign, as people may share a browser
 const key = (callsign: string) => `mumble.guide.${callsign}`;

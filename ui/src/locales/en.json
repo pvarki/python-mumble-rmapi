@@ -164,7 +164,7 @@
     "steps": {
       "intro": {
         "title": "Talk in voice nets",
-        "description": "Voice works like a radio: hold push-to-talk and everyone in the same net hears you. Use it here in the browser, or on your phone with the Voice plugin in ATAK, installed from the TAK update server."
+        "description": "Voice works like a radio: hold push-to-talk and everyone in the same net hears you. Choose above where you talk: here in the browser, or in ATAK on an Android phone."
       },
       "join": {
         "title": "Join a net",
@@ -172,7 +172,21 @@
       },
       "talk": {
         "title": "Push to talk",
-        "description": "Hold the big button while you speak, or hold the PTT key: Tab, or any key or side mouse button you choose with Change. The key works only while this browser tab is in front."
+        "description": "Hold the big button while you speak, or hold the PTT key: Tab, or any key or side mouse button you choose with Change. The key works only while this browser tab is in front.",
+        "image": "browser-talk.en.webp",
+        "alt": "The talk panel in the browser while transmitting, with a net picked and the people in it"
+      },
+      "plugin": {
+        "title": "Load OpenDefence Voice in ATAK",
+        "description": "Set up ATAK with the TAK guide first. Then open ATAK's menu and choose Plugins. Install OpenDefence Voice from the list if it is not there yet, and tick it so that it shows Loaded. It connects to voice by itself with your TAK identity: there is nothing to sign in to.",
+        "image": "android-plugins.webp",
+        "alt": "ATAK's plugin list with OpenDefence Voice loaded"
+      },
+      "ptt": {
+        "title": "Talk from ATAK",
+        "description": "Open Voice in ATAK and pick a net. Hold HOLD TO TX while you speak. Hardware buttons work as push-to-talk too: the Active Key on Samsung XCover and Tab Active, a Pryme Bluetooth PTT button, or volume up once you turn on Volume-up PTT in OD Voice's settings.",
+        "image": "android-talk.webp",
+        "alt": "OD Voice in ATAK, joined to a net, with its push-to-talk button"
       },
       "nets": {
         "title": "Who is in which net",
@@ -186,6 +200,11 @@
         "title": "What you cannot change here",
         "description": "Mission nets and their subscribers come from TAK and are read-only here. A mission gets a net once someone subscribes to it; password-protected missions get none. The Teams and Roles nets are fixed. On the Users tab you can turn voice off for a callsign."
       }
+    },
+    "platform": "Where you talk",
+    "platforms": {
+      "browser": "In this browser",
+      "android": "Android phone: ATAK"
     }
   }
 }

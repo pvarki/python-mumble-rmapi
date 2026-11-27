@@ -12,9 +12,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { NS } from "@/i18n";
-import type { GuideStep } from "./guide";
+import { GUIDE_FILES, type GuideStep } from "./guide";
 
-// A few steps in a dialog, like the matrix and TAK remotes' guides, without their pictures
+// A few steps in a dialog, like the matrix and TAK remotes' guides
 export function FeatureGuide({
   open,
   onOpenChange,
@@ -23,6 +23,8 @@ export function FeatureGuide({
   trigger,
   onFinish,
   firstStep,
+  header,
+  restartOn,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -34,9 +36,18 @@ export function FeatureGuide({
   onFinish?: () => void;
   // Shown under the buttons on the first step only
   firstStep?: ReactNode;
+  // Shown under the step count, such as a choice of platform
+  header?: ReactNode;
+  // The guide goes back to its first step when this changes
+  restartOn?: string;
 }) {
   const { t } = useTranslation(NS);
   const [index, setIndex] = useState(0);
+  const [startedOn, setStartedOn] = useState(restartOn);
+  if (startedOn !== restartOn) {
+    setStartedOn(restartOn);
+    setIndex(0);
+  }
   const next = useRef<HTMLButtonElement>(null);
   const at = Math.min(index, steps.length - 1);
   const step = steps[at];
@@ -60,7 +71,7 @@ export function FeatureGuide({
     <Dialog open={open} onOpenChange={change}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
-        className="max-h-[90vh] overflow-y-auto sm:max-w-md"
+        className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           next.current?.focus();
@@ -85,7 +96,23 @@ export function FeatureGuide({
             </Button>
           </DialogClose>
         </div>
+        {header}
         <h3 className="font-semibold">{t(step.title)}</h3>
+        {step.image && (
+          // Opens the picture full size in a new tab
+          <a
+            href={GUIDE_FILES + t(step.image.file)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block"
+          >
+            <img
+              src={GUIDE_FILES + t(step.image.file)}
+              alt={t(step.image.alt)}
+              className="aspect-video w-full rounded-lg border bg-muted object-contain"
+            />
+          </a>
+        )}
         <DialogDescription className="leading-relaxed">
           {t(step.description)}
         </DialogDescription>

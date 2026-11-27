@@ -1,12 +1,32 @@
-import { CircleHelp, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { CircleHelp, EyeOff, Globe } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Meta } from "@/App";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { NS } from "@/i18n";
 import { FeatureGuide } from "./FeatureGuide";
-import { guideSteps, opensItself, saveFinished } from "./guide";
+import {
+  detectPlatform,
+  GUIDE_FILES,
+  guideSteps,
+  opensItself,
+  PLATFORMS,
+  saveFinished,
+  type Platform,
+} from "./guide";
+
+const ICONS: Record<Platform, ReactNode> = {
+  browser: <Globe />,
+  android: <img src={GUIDE_FILES + "android.svg"} alt="" className="size-4" />,
+};
 
 export function OnboardingHandler({
   meta,
@@ -19,7 +39,8 @@ export function OnboardingHandler({
 }) {
   const { t } = useTranslation(NS);
   const { callsign, autoOpenGuides, onDisableGuides } = meta;
-  const steps = guideSteps({ voice, admin });
+  const [platform, setPlatform] = useState(detectPlatform);
+  const steps = guideSteps({ voice, admin, platform });
   const [open, setOpen] = useState(() =>
     opensItself(callsign, steps, autoOpenGuides),
   );
@@ -31,7 +52,29 @@ export function OnboardingHandler({
       onOpenChange={setOpen}
       title={t("guide.title")}
       steps={steps}
+      restartOn={platform}
       onFinish={callsign ? () => saveFinished(callsign, steps) : undefined}
+      header={
+        // Admins without voice only get the nets they manage, which are the same everywhere
+        voice && (
+          <Select
+            value={platform}
+            onValueChange={(value) => setPlatform(value as Platform)}
+          >
+            <SelectTrigger className="w-full" aria-label={t("guide.platform")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PLATFORMS.map((p) => (
+                <SelectItem key={p} value={p}>
+                  {ICONS[p]}
+                  {t(`guide.platforms.${p}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )
+      }
       trigger={
         <Button
           type="button"

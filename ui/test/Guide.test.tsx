@@ -2,10 +2,11 @@
 // itself on the first visit, once rmapi's data is in
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import MumbleApp, { type Meta } from "../src/App";
 import {
+  detectPlatform,
   finishedSteps,
   guideSteps,
   opensItself,
@@ -30,6 +31,13 @@ function setup({ voice = true, admin = false, meta = {} as Meta } = {}) {
 }
 
 const dialog = () => screen.queryByRole("dialog", { name: "Voice guide" });
+
+// Radix Select calls these, which jsdom lacks
+beforeAll(() => {
+  Element.prototype.hasPointerCapture = () => false;
+  Element.prototype.releasePointerCapture = () => {};
+  Element.prototype.scrollIntoView = () => {};
+});
 
 describe("the voice guide", () => {
   it("opens from the help button on the first step, with focus on Next", async () => {
@@ -106,6 +114,67 @@ describe("the voice guide", () => {
   it("is not offered where it has no steps", () => {
     setup({ voice: false });
     expect(screen.queryByRole("button", { name: "Voice guide" })).toBeNull();
+  });
+});
+
+describe("where you talk", () => {
+  const platform = () =>
+    screen.getByRole("combobox", { name: "Where you talk" });
+
+  it("starts in the browser, with its picture", async () => {
+    const { user, help, button } = setup();
+    await user.click(help());
+    expect(platform().textContent).toBe("In this browser");
+    await user.click(button("Next"));
+    await user.click(button("Next"));
+    expect(screen.getByRole("heading", { name: "Push to talk" })).toBeTruthy();
+    const picture = screen.getByRole("img", {
+      name: /^The talk panel in the browser/,
+    });
+    expect(picture.getAttribute("src")).toBe(
+      "/ui/mumble/guide/browser-talk.en.webp",
+    );
+    expect(picture.closest("a")?.getAttribute("href")).toBe(
+      "/ui/mumble/guide/browser-talk.en.webp",
+    );
+  });
+
+  it("switches to ATAK's steps, back on the first step", async () => {
+    const { user, help, button } = setup();
+    await user.click(help());
+    await user.click(button("Next"));
+    await user.click(platform());
+    await user.click(
+      screen.getByRole("option", { name: "Android phone: ATAK" }),
+    );
+    expect(screen.getByText("Step 1 / 4")).toBeTruthy();
+    await user.click(button("Next"));
+    expect(
+      screen.getByRole("heading", { name: "Load OpenDefence Voice in ATAK" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("img", { name: /^ATAK's plugin list/ }),
+    ).toBeTruthy();
+  });
+
+  it("is not offered to an admin with voice off", async () => {
+    const { user, help } = setup({ voice: false, admin: true });
+    await user.click(help());
+    expect(screen.queryByRole("combobox")).toBeNull();
+  });
+});
+
+describe("detectPlatform", () => {
+  it("starts Android phones on ATAK and everyone else in the browser", () => {
+    expect(detectPlatform("Mozilla/5.0 (Linux; Android 14; SM-G556B)")).toBe(
+      "android",
+    );
+    expect(
+      detectPlatform("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)"),
+    ).toBe("browser");
+    expect(detectPlatform("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")).toBe(
+      "browser",
+    );
   });
 });
 
@@ -224,6 +293,11 @@ describe("guideSteps", () => {
       "units",
       "fixed",
     ]);
+  });
+  it("puts ATAK's own steps between the intro and the nets", () => {
+    expect(
+      ids(guideSteps({ voice: true, admin: false, platform: "android" })),
+    ).toEqual(["intro", "plugin", "ptt", "nets"]);
   });
   it("leaves talking out where voice is off", () => {
     expect(ids(guideSteps({ voice: false, admin: true }))).toEqual([

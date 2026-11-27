@@ -164,7 +164,7 @@
     "steps": {
       "intro": {
         "title": "Tala i röstnät",
-        "description": "Röst fungerar som en radio: håll in PTT så hör alla i samma nät dig. Använd den här i webbläsaren, eller i telefonen med Voice-tillägget i ATAK, som du installerar från TAK-uppdateringsservern."
+        "description": "Röst fungerar som en radio: håll in PTT så hör alla i samma nät dig. Välj ovan var du talar: här i webbläsaren, eller i ATAK på en Android-telefon."
       },
       "join": {
         "title": "Gå med i ett nät",
@@ -172,7 +172,21 @@
       },
       "talk": {
         "title": "Tryck för att tala",
-        "description": "Håll in den stora knappen medan du talar, eller håll in PTT-tangenten: Tabb, eller valfri tangent eller musens sidoknapp som du väljer med Byt. Tangenten fungerar bara när den här webbläsarfliken är framme."
+        "description": "Håll in den stora knappen medan du talar, eller håll in PTT-tangenten: Tabb, eller valfri tangent eller musens sidoknapp som du väljer med Byt. Tangenten fungerar bara när den här webbläsarfliken är framme.",
+        "image": "browser-talk.sv.webp",
+        "alt": "Röstpanelen i webbläsaren under sändning, med ett valt nät och personerna i det"
+      },
+      "plugin": {
+        "title": "Ladda OpenDefence Voice i ATAK",
+        "description": "Konfigurera först ATAK med TAK-guiden. Öppna sedan ATAK:s meny och välj Plugins. Installera OpenDefence Voice från listan om det inte redan finns där, och markera det så att det står Loaded. Det ansluter till röst av sig självt med din TAK-identitet: du behöver inte logga in någonstans.",
+        "image": "android-plugins.webp",
+        "alt": "ATAK:s lista över tillägg med OpenDefence Voice laddat"
+      },
+      "ptt": {
+        "title": "Tala från ATAK",
+        "description": "Öppna Voice i ATAK och välj ett nät. Håll in HOLD TO TX medan du talar. Även fysiska knappar fungerar som PTT: Active Key på Samsung XCover och Tab Active, en Pryme Bluetooth-PTT-knapp, eller volym upp när du slår på Volume-up PTT i OD Voices inställningar.",
+        "image": "android-talk.webp",
+        "alt": "OD Voice i ATAK, anslutet till ett nät, med sin PTT-knapp"
       },
       "nets": {
         "title": "Vem är i vilket nät",
@@ -186,6 +200,11 @@
         "title": "Det du inte kan ändra här",
         "description": "Uppdragens nät och deras prenumeranter kommer från TAK och kan bara visas här. Ett uppdrag får ett nät när någon prenumererar på det; lösenordsskyddade uppdrag får inget. Nät för Team och Roller är fasta. På fliken Användare kan du stänga av rösten för ett anropsnamn."
       }
+    },
+    "platform": "Var du talar",
+    "platforms": {
+      "browser": "I den här webbläsaren",
+      "android": "Android-telefon: ATAK"
     }
   }
 }
