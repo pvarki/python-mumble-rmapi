@@ -21,7 +21,6 @@ class Settings(BaseSettings):
     """Where things are and who the peers are; MUMBLERMAPI_* variables, and the product manifest through from_env"""
 
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
-    sqlite_file: Path = Path("/data/mumblermapi.db")  # the store of earlier releases, copied once
     templates_dir: Path = Path("/templates")  # channel plan templates an admin may choose to apply
     ui_dir: Path = Path("/ui")  # the built UI remote, served at UI_PATH when present
     tak: TakSettings | None = None  # where to read missions from; None leaves Missions/ empty

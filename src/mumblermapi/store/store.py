@@ -3,11 +3,9 @@ voice slot each browser holds"""
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Literal
 
 from sqlalchemy import Engine, func
@@ -18,10 +16,7 @@ from sqlmodel import Session, SQLModel, col, delete, select, update
 from ..channels import GUARD, MAX_DEPTH, Access, ChannelSpec
 from ..tickets import WEB_SLOTS
 from .errors import ChannelExists, NoSuchChannel, TooDeep
-from .sqlite import copy_sqlite
 from .tables import ChannelRow, MemberRow, MetaRow, MissionMemberRow, UserRow, WebSlotRow
-
-LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -75,20 +70,11 @@ def _subtree(parents: dict[int, int], channel_id: int) -> list[int]:
 class Store:
     """The state in Postgres. Every change bumps a version so murmur-agent can poll cheaply."""
 
-    def __init__(self, engine: Engine, sqlite_file: Path | None = None) -> None:
-        """sqlite_file is the store of releases before Postgres. It is copied in the transaction that gives a new
-        database its version, so once per database, and left as it was."""
+    def __init__(self, engine: Engine) -> None:
         self._engine = engine
         SQLModel.metadata.create_all(engine)
-        copied = None
         with Session(engine) as session, session.begin():
-            if sqlite_file and sqlite_file.is_file() and session.get(MetaRow, "version") is None:
-                copy_sqlite(sqlite_file, session)
-                session.flush()  # the copied version first, so the insert below keeps it
-                copied = sqlite_file
             session.exec(insert(MetaRow).values(key="version", value=1).on_conflict_do_nothing())
-        if copied:
-            LOGGER.info("Copied the SQLite store %s", copied)
 
     @contextmanager
     def _change(self) -> Generator[Session]:

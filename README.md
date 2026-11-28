@@ -78,15 +78,6 @@ mumblermapi keeps its state in its own CloudNativePG cluster, `mumble-postgres`.
 with SQLModel's `create_all`, as rmapi does. That only adds missing tables, so a change to an existing table needs a
 migration of its own.
 
-The first start against an empty database copies the SQLite store of earlier releases (`MUMBLERMAPI_SQLITE_FILE`)
-into it, in the transaction that gives the database its version, and leaves the file as it was. A database that has
-a version never copies again, and an empty one always does:
-
-- After a rollback to 1.0.x, the changes made there stay in the file. To carry them over on the next upgrade, delete
-  the `mumble-postgres` cluster and its PVC first.
-- A recreated, empty `mumble-postgres` copies the file again: the users, flags and nets it held then come back, and
-  net ids given out since may be given out again. Once an upgrade is confirmed, remove or rename the file.
-
 ## Configuration
 
 Like every Deploy App product, mumblermapi reads the product manifest the platform mounts at
@@ -101,7 +92,6 @@ manifest the in-cluster defaults apply. The variables below override it.
 | `AGENT_PRESENCE_URL`                                                                               | agent       | mumblermapi's `/api/v1/agent/presence`; unset reports nothing                                                                                                                                        |
 | `AGENT_CA_BUNDLE`, `AGENT_DATA_DIR`, `AGENT_OCSP_URL`, `AGENT_POLL_SECONDS`, `AGENT_SWEEP_SECONDS` | agent       | see `agent/config.py`                                                                                                                                                                                |
 | `MUMBLERMAPI_DATABASE_HOST`, `_PORT`, `_NAME`, `_USER`, `_PASSWORD`                                | mumblermapi | mumblermapi's Postgres, from CloudNativePG's app secret (`host`, `port`, `dbname`, `username`, `password`); default `mumble-postgres-rw:5432`, database and user `mumble`                            |
-| `MUMBLERMAPI_SQLITE_FILE`                                                                          | mumblermapi | The SQLite store of earlier releases, default `/data/mumblermapi.db`, copied into an empty database (see Database); if the copy fails, mumblermapi does not start.                                   |
 | `MUMBLERMAPI_TEMPLATES_DIR`, `MUMBLERMAPI_UI_DIR`                                                  | mumblermapi | Channel plan templates admins may apply (`*.yaml`: `name`, `description`, `channels`, each channel with an optional `access` of `open`, `invite` or `inherit`; none is applied by default), built UI |
 | `MUMBLERMAPI_RMAPI_IDENTITY`, `MUMBLERMAPI_AGENT_IDENTITY`                                         | mumblermapi | Linkerd identities allowed to send user events and read agent state                                                                                                                                  |
 | `MUMBLERMAPI_TRAEFIK_IDENTITY`, `MUMBLERMAPI_CA_BUNDLE`                                            | mumblermapi | The edge whose forwarded certificate voice tickets are minted for, and the CAs it must chain to                                                                                                      |
