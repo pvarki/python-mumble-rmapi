@@ -8,11 +8,11 @@ from pathlib import Path
 
 import pytest
 
-from mumblermapi.authenticator import MAX_NAME_LENGTH, REJECT, TRY_LATER, UNKNOWN, Authenticator, Refusal
+from mumblermapi.agent.authenticator import MAX_NAME_LENGTH, REJECT, TRY_LATER, UNKNOWN, Authenticator, Refusal
+from mumblermapi.agent.ocsp import OcspUnavailable
+from mumblermapi.agent.policy import Policy
+from mumblermapi.agent.userids import UserIds
 from mumblermapi.identity import CertVerifier, Identity
-from mumblermapi.ocsp import OcspUnavailable
-from mumblermapi.policy import Policy
-from mumblermapi.userids import UserIds
 
 from .conftest import NOW, Pki, issue
 

@@ -117,8 +117,7 @@
     "connecting": "Yhdistetään…",
     "connectedAs": "Yhdistetty: {{name}}",
     "leave": "Poistu",
-    "inNet": "Verkossa: {{net}}",
-    "pickNet": "Valitse verkko alta.",
+    "pickNet": "Valitse verkko",
     "listenOnly": "Tässä verkossa voit vain kuunnella.",
     "denied": "Et pääse tähän verkkoon.",
     "hold": "Pidä painettuna ja puhu",
@@ -133,7 +132,7 @@
     "pressKey": "Paina haluamaasi näppäintä tai hiiren sivupainiketta (Esc peruu)",
     "inThisNet": "Verkossa nyt",
     "web": "selain",
-    "nets": "Puheverkot",
+    "net": "Puheverkko",
     "people_one": "{{count}} henkilö",
     "people_other": "{{count}} henkilöä",
     "group": {
@@ -151,6 +150,61 @@
       "kicked": "Puhepalvelin katkaisi yhteyden.",
       "lost": "Yhteys katkesi. Liity uudelleen.",
       "failed": "Yhdistäminen epäonnistui."
+    }
+  },
+  "guide": {
+    "open": "Puheen ohje",
+    "title": "Puheen ohje",
+    "step": "Vaihe {{n}} / {{count}}",
+    "back": "Takaisin",
+    "next": "Seuraava",
+    "finish": "Valmis",
+    "close": "Sulje ohje",
+    "disableAutoOpen": "Älä näytä minulle ohjeita automaattisesti",
+    "steps": {
+      "intro": {
+        "title": "Puhu puheverkoissa",
+        "description": "Puhe toimii kuin radio: pidä PTT pohjassa, niin kaikki samassa verkossa kuulevat sinut. Valitse yltä, missä puhut: täällä selaimessa tai ATAKissa Android-puhelimella."
+      },
+      "join": {
+        "title": "Liity verkkoon",
+        "description": "Paina Liity puheeseen ja salli mikrofoni. Valitse sitten verkko listasta, jossa ovat verkot, joihin pääset. Kuulokkeet estävät kaiun."
+      },
+      "talk": {
+        "title": "Puhu PTT:llä",
+        "description": "Pidä isoa painiketta painettuna puhuessasi tai pidä PTT-näppäintä pohjassa: Sarkain tai mikä tahansa näppäin tai hiiren sivupainike, jonka valitset Vaihda-painikkeella. Näppäin toimii vain, kun tämä selaimen välilehti on edessä.",
+        "image": "browser-talk.fi.webp",
+        "alt": "Puhepaneeli selaimessa lähetyksen aikana, verkko valittuna ja sen jäsenet näkyvissä"
+      },
+      "plugin": {
+        "title": "Ota OpenDefence Voice käyttöön ATAKissa",
+        "description": "Ota ATAK ensin käyttöön TAKin ohjeella. Avaa sitten ATAKin valikko ja valitse Plugins. Asenna OpenDefence Voice listasta, jos se ei ole vielä asennettu, ja rastita se, niin että siinä lukee Loaded. Se yhdistää puheeseen itse TAK-tunnuksellasi: mihinkään ei tarvitse kirjautua.",
+        "image": "android-plugins.webp",
+        "alt": "ATAKin liitännäislista, jossa OpenDefence Voice on käytössä"
+      },
+      "ptt": {
+        "title": "Puhu ATAKista",
+        "description": "Avaa Voice ATAKissa ja valitse verkko. Pidä PAINA JA PUHU -painiketta pohjassa puhuessasi. PTT:nä toimivat myös laitteen painikkeet: Samsung XCoverin ja Tab Activen Active Key, Prymen Bluetooth-PTT-painike tai äänenvoimakkuuden lisäysnäppäin, kun otat OD Voicen asetuksista käyttöön Äänenvoimakkuus ylös -PTT:n.",
+        "image": "android-talk.webp",
+        "alt": "OD Voice ATAKissa verkkoon liittyneenä, PTT-painike näkyvissä"
+      },
+      "nets": {
+        "title": "Kuka on missäkin verkossa",
+        "description": "Yksiköt ovat organisaatiosi verkkoja; kukin on avoin kaikille tai vain jäsenilleen. Jos tässä ympäristössä on tehtävien verkot, Tehtävät tulevat TAKista: pääset tehtävän verkkoon pian sen jälkeen, kun tilaat tehtävän ATAKin Data Syncissä. Guard, Tehtävien alla, on hätäkanava, avoin kaikille. Tiimeissä ja Rooleissa on verkko kullekin ATAKin tiimivärille ja roolille, avoin kaikille."
+      },
+      "units": {
+        "title": "Rakenna yksiköiden verkot",
+        "description": "Ylläpitäjänä rakennat yksiköiden verkot alla Verkot-välilehdellä: lisää verkkoja ja aliverkkoja tai aloita mallista tai kanavasuunnitelmasta Muut toiminnot -valikosta. Avaa verkko valitaksesi, kuka voi käyttää sitä, ja lisätäksesi sen jäsenet."
+      },
+      "fixed": {
+        "title": "Mitä täällä ei voi muuttaa",
+        "description": "Tehtävien verkot ja niiden tilaajat tulevat TAKista, ja täällä niitä voi vain katsoa. Tehtävä saa verkon, kun joku tilaa sen; salasanalla suojatut tehtävät eivät saa verkkoa. Tiimien ja roolien verkot ovat kiinteät. Käyttäjät-välilehdellä voit estää puheen tunnukselta."
+      }
+    },
+    "platform": "Missä puhut",
+    "platforms": {
+      "browser": "Tässä selaimessa",
+      "android": "Android-puhelin: ATAK"
     }
   }
 }

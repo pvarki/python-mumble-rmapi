@@ -6,11 +6,11 @@ permissions:
   contents: read
 
 jobs:
-  checks:
-    # The version bump only: prek runs below, where its hooks' Python, UI and tools are installed
-    uses: pvarki/config-ci-library/.github/workflows/general-check.yml@5a0c4ca0d9e53135ea5ed3427840641d4ccb6aa2 # v0.14.2+261026
-    with:
-      run-prek: false
+  bumpversion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pvarki/config-ci-library/.github/actions/validate-bumpversion@5a0c4ca0d9e53135ea5ed3427840641d4ccb6aa2 # v0.14.2+261026
 
   prek:
     runs-on: ubuntu-latest
@@ -28,7 +28,7 @@ jobs:
       - uses: j178/prek-action@4e14d07f9231acabce116ccfca13b13dd9755ece # v3.0.0
 
   publish:
-    needs: [checks, prek]
+    needs: [bumpversion, prek]
     runs-on: arc-runner-set
     permissions:
       contents: read

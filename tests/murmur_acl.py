@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from mumblermapi.enforce import OPEN, Acl
+from mumblermapi.agent.enforce import OPEN, Acl
 
 WRITE, ENTER, MOVE, LISTEN = 0x1, 0x4, 0x20, 0x800
 DEFAULT = 0x2 | ENTER | 0x8 | 0x100 | 0x200 | LISTEN  # Traverse, Enter, Speak, Whisper, TextMessage, Listen

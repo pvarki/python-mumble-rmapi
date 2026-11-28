@@ -1,4 +1,4 @@
-// The talk panel's view of Murmur's channel tree. Only type imports, so `node --test` can load this file.
+// The talk panel's view of Murmur's channel tree
 import type { Net, Person } from "./client";
 
 export interface NetRow {
@@ -56,7 +56,23 @@ export function netRows(
   return walk(0, 0, "");
 }
 
-// The path of a net, for the "you are in" line; "" for Murmur's root
+export interface NetGroup {
+  id: number;
+  name: string; // Units, Missions, Teams, Roles
+  rows: NetRow[];
+}
+
+// netRows under their top-level groups, for the net picker's labelled sections
+export function netGroups(rows: readonly NetRow[]): NetGroup[] {
+  const groups: NetGroup[] = [];
+  for (const row of rows) {
+    if (row.depth === 0) groups.push({ id: row.id, name: row.name, rows: [] });
+    else groups[groups.length - 1].rows.push(row);
+  }
+  return groups;
+}
+
+// The path of a net, for the net picker; "" for Murmur's root
 export function netPath(nets: ReadonlyMap<number, Net>, id: number): string {
   const names: string[] = [];
   for (
@@ -65,7 +81,6 @@ export function netPath(nets: ReadonlyMap<number, Net>, id: number): string {
     net = nets.get(net.parent)
   ) {
     names.unshift(net.name);
-    if (names.length > 32) break; // a loop in a broken tree
   }
   return names.join(" › ");
 }

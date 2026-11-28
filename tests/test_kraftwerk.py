@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from mumblermapi import kraftwerk
-from mumblermapi.api import Settings
+from mumblermapi.config import Settings
 from mumblermapi.tak import TakSettings
 
 MANIFEST = {

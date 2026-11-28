@@ -16,7 +16,6 @@ export interface Channel {
   children: Channel[];
 }
 
-// A channel plan admins may apply; applying adds the nets that are missing
 export interface Template {
   id: string;
   name: string;

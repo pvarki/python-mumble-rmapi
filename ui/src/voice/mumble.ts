@@ -1,6 +1,5 @@
-// The Mumble protocol as the browser speaks it through the voice gateway: one whole TCP message (6-byte header
-// plus protobuf body) per WebSocket frame, with voice in UDPTunnel messages in the legacy (1.4) packet format.
-// Only the fields the talk panel reads are decoded. No imports, so `node --test` can load this file directly.
+// Mumble through the voice gateway: one TCP message (6-byte header, protobuf body) per WebSocket frame, voice in
+// UDPTunnel messages in the legacy (1.4) format. Only the fields the talk panel reads are decoded.
 
 export const MSG = {
   UDPTunnel: 1,
@@ -36,7 +35,6 @@ export function unframe(
   return { type: view.getUint16(0), body: data.subarray(6) };
 }
 
-// ---- protobuf
 type Field = number | Uint8Array;
 export type Fields = Map<number, Field[]>;
 
@@ -176,7 +174,7 @@ export const moveTo = (session: number, channel: number) =>
     ]),
   );
 
-// ---- Mumble's own varint, used inside voice packets (PacketDataStream)
+// Mumble's own varint, used inside voice packets (PacketDataStream)
 export function mvEncode(value: number): number[] {
   if (value < 0x80) return [value];
   if (value < 0x4000) return [(value >> 8) | 0x80, value & 0xff];
@@ -256,9 +254,8 @@ export interface Voice {
   last: boolean;
 }
 
-// A voice packet from the server; null for anything that is not Opus, and for a key-up, which a phone sends ahead
-// of a press's audio: no terminator and a payload of one byte or none. Such a payload is no audio (a lone TOC byte
-// decodes as concealment of the speaker's last transmission), so a terminator's comes back empty.
+// A voice packet, or null for non-Opus and a phone's key-up (one byte or none, no terminator). A lone TOC byte
+// decodes as concealment of the last transmission, so a terminator's comes back empty.
 export function parseVoice(packet: Uint8Array): Voice | null {
   if (packet.length < 1 || packet[0] >> 5 !== OPUS) return null;
   let at = 1;

@@ -7,7 +7,7 @@ import logging
 import uvicorn
 from libpvarki.logging import add_trace_and_audit, init_logging
 
-from .api import create_app
+from .app import create_app
 
 
 def main() -> None:  # pragma: no cover  # the container entrypoint

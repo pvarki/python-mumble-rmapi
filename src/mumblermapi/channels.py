@@ -1,11 +1,11 @@
-"""The channel tree the agent keeps in Murmur"""
+"""The channel plan: its names and limits, how it is read and the tree it makes"""
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Literal
 
 import yaml
 from yaml.constructor import ConstructorError
@@ -33,38 +33,29 @@ ROLES = ("Team Member", "Team Lead", "HQ", "Sniper", "Medic", "Forward Observer"
 # A TAK mission of the same name is ignored rather than allowed to gate it.
 GUARD = "Guard"
 
-# Murmur checks a name only when a client makes or renames a channel, never over Ice, so this is the only gate on
-# a net's name: Murmur's default channelname pattern with its dash taken literally (in Murmur's " -=" it is a
-# range that lets most punctuation through), capped at 100 characters. Use fullmatch: match() lets "$" pass a
-# trailing newline.
+# Murmur's default channelname pattern, its " -=" range made a literal dash, capped at 100. Murmur checks names from
+# clients only, never over Ice, so this is the only gate. Use fullmatch: match() lets "$" pass a trailing newline.
 NAME_RE = re.compile(r"^[ \-=\w#\[\]{}()@|]{1,100}$")
 
-# Murmur holds 1000 channels by default. The cap also stops YAML aliases from expanding a small plan without end.
+# Murmur's default channel limit; it also stops YAML aliases from expanding a small plan without end
 MAX_NETS = 1000
-# Members across a plan, a members list aliased into many nets counted in each: about what a 1 MiB plan holds
-# written out in full, so aliases cannot multiply them past that.
+# About what a 1 MiB plan holds written out in full, each aliased members list counted in every net
 MAX_MEMBERS = 100_000
-# Murmur's channelnestinglimit, which the deployment leaves at its default. Server::canNest refuses a channel
-# under a parent this many levels below the root, over Ice too. The root is level 0 and Units/ level 1, so a net
-# d deep is at level d + 1.
+# Murmur's default channelnestinglimit, which holds over Ice too. The root is level 0 and Units/ level 1.
 MURMUR_NESTING_LIMIT = 10
-# Keeps the last level free for the temporary channels members may make in the deepest net. It also stops a net
-# whose channels alias a list above it before Python's recursion limit does.
+# Leaves the last level for members' temporary channels, and stops aliased nesting before Python's recursion limit
 MAX_DEPTH = MURMUR_NESTING_LIMIT - 2
-MAX_DESCRIPTION = 1000  # as long as the admin API lets a description be
+MAX_DESCRIPTION = 1000
 
 
 # Who may use a Units/ net: everyone, only its members (and those of invite-only nets above it), or the same
 # as the net above it. A top-level net has nothing above it, so "inherit" there means open.
+Access = Literal["open", "invite", "inherit"]
 ACCESS = ("open", "invite", "inherit")
 
 
 class ChannelPlanError(ValueError):
     """The channel plan is malformed"""
-
-
-class ChannelRefused(Exception):
-    """Murmur will not create the channel there, as when it would nest past Murmur's limit"""
 
 
 @dataclass(frozen=True)
@@ -75,7 +66,7 @@ class ChannelSpec:
     name: str
     description: str = ""
     children: tuple[ChannelSpec, ...] = ()
-    access: str = ""
+    access: Access | Literal[""] = ""
     members: tuple[str, ...] = ()
 
 
@@ -109,8 +100,8 @@ def _parse_list(items: object, where: str, room: _Room, depth: int = 1) -> tuple
             raise ChannelPlanError(f"{at}: invalid name {shown}")
         if name in seen:
             raise ChannelPlanError(f"{at}: duplicate name {name!r}")
-        if not isinstance(description, str) or len(description) > MAX_DESCRIPTION:
-            raise ChannelPlanError(f"{at}: description must be text of at most {MAX_DESCRIPTION} characters")
+        if not isinstance(description, str) or len(description) > MAX_DESCRIPTION or "\x00" in description:
+            raise ChannelPlanError(f"{at}: description must be text of at most {MAX_DESCRIPTION} characters, no NUL")
         access = item.get("access", "")
         if access not in ("", *ACCESS):
             raise ChannelPlanError(f"{at}: access must be one of {', '.join(ACCESS)}")
@@ -191,96 +182,3 @@ def desired_tree(units: tuple[ChannelSpec, ...], missions: tuple[ChannelSpec, ..
         ChannelSpec("Teams", "ATAK team colours", tuple(ChannelSpec(colour) for colour in TEAM_COLOURS)),
         ChannelSpec("Roles", "ATAK roles", tuple(ChannelSpec(role) for role in ROLES)),
     )
-
-
-@dataclass(frozen=True)
-class ExistingChannel:
-    """A channel as Murmur reports it"""
-
-    id: int
-    parent: int
-    name: str
-    temporary: bool = False
-    description: str = ""
-    links: tuple[int, ...] = ()
-
-
-class ChannelServer(Protocol):
-    """The part of Murmur the reconciler needs"""
-
-    def channels(self) -> list[ExistingChannel]:
-        """Every channel on the server"""
-
-    def add_channel(self, name: str, parent: int, description: str) -> int:
-        """Create a channel and return its id; raises ChannelRefused when Murmur will not have it there"""
-
-    def set_description(self, channel_id: int, description: str) -> None:
-        """Change a channel's description"""
-
-    def remove_channel(self, channel_id: int) -> None:
-        """Remove a channel and everything under it"""
-
-
-def reconcile(server: ChannelServer, desired: tuple[ChannelSpec, ...], root: int = 0) -> tuple[list[str], list[str]]:
-    """Create the channels that are missing and correct the descriptions of the others. Returns the paths
-    created and the paths Murmur refused.
-
-    Channels are matched by name, so a renamed net is a new channel and the old one is pruned. A temporary
-    channel holding a net's name is replaced. A refused channel is left out with everything under it, and the
-    rest of the tree still goes in.
-    """
-    # ponytail: rename = recreate, which moves anyone in the net to its parent; keep a store-id map if renames
-    # of busy nets become common
-    existing = {(channel.parent, channel.name): channel for channel in server.channels()}
-    created: list[str] = []
-    refused: list[str] = []
-
-    def walk(specs: tuple[ChannelSpec, ...], parent: int, prefix: str) -> None:
-        for spec in specs:
-            path = f"{prefix}/{spec.name}"
-            channel = existing.get((parent, spec.name))
-            if channel is not None and channel.temporary:
-                # A user's temporary channel must not stand in for a net: its creator keeps rights over it and
-                # whatever is built inside. Murmur moves the people in it to the parent.
-                server.remove_channel(channel.id)
-                channel = None
-            if channel is None:
-                try:
-                    channel_id = server.add_channel(spec.name, parent, spec.description)
-                except ChannelRefused:
-                    refused.append(path)
-                    continue  # the nets under it cannot exist without it
-                created.append(path)
-            else:
-                channel_id = channel.id
-                if channel.description != spec.description:
-                    server.set_description(channel_id, spec.description)
-            walk(spec.children, channel_id, path)
-
-    walk(desired, root, "")
-    return created, refused
-
-
-def prune(server: ChannelServer, desired: tuple[ChannelSpec, ...], root: int, prefix: str = "") -> list[str]:
-    """Remove the permanent channels under root that desired no longer has, and return their paths.
-
-    Temporary channels belong to the users in them, and Murmur removes them once they are empty.
-    """
-    children: dict[int, list[ExistingChannel]] = {}
-    for channel in server.channels():
-        children.setdefault(channel.parent, []).append(channel)
-    removed: list[str] = []
-
-    def walk(specs: tuple[ChannelSpec, ...], parent: int, prefix: str) -> None:
-        wanted = {spec.name: spec for spec in specs}
-        for channel in children.get(parent, []):
-            path = f"{prefix}/{channel.name}"
-            spec = wanted.get(channel.name)
-            if spec is not None:
-                walk(spec.children, channel.id, path)
-            elif not channel.temporary:
-                server.remove_channel(channel.id)
-                removed.append(path)
-
-    walk(desired, root, prefix)
-    return removed

@@ -16,20 +16,29 @@ import pytest
 from aiohttp.abc import AbstractResolver, ResolveResult
 from fastapi.testclient import TestClient
 
-from mumblermapi.api import PRESENCE_TTL, Settings, create_app
+from mumblermapi import health
+from mumblermapi.api.murmur_agent import PRESENCE_TTL
+from mumblermapi.app import create_app
+from mumblermapi.config import Settings
 from mumblermapi.health import Answer, fetcher, problems, watch, why
+from mumblermapi.store import DatabaseSettings, engine
 
 PROXY = "http://proxy/ready"
 GATEWAY = "http://gateway/readyz"
 
 
-def check(answers: dict[str, Answer], presence_age: float = 10.0, uptime: float = 1000.0) -> list[str]:
+def check(
+    answers: dict[str, Answer],
+    presence_age: float = 10.0,
+    uptime: float = 1000.0,
+    version: Callable[[], int] = lambda: 1,
+) -> list[str]:
     """problems() against fixed answers: an URL missing from answers timed out"""
 
     async def fetch(url: str) -> Answer:
         return answers.get(url, "timed out")
 
-    return asyncio.run(problems(fetch, PROXY, GATEWAY, presence_age, uptime, PRESENCE_TTL))
+    return asyncio.run(problems(fetch, version, PROXY, GATEWAY, presence_age, uptime, PRESENCE_TTL))
 
 
 def test_all_well() -> None:
@@ -58,6 +67,28 @@ def test_each_problem_named_with_its_cause() -> None:
     assert check({PROXY: 200, GATEWAY: 503}) == ["the voice gateway is not ready (HTTP 503): browsers cannot talk"]
 
 
+def test_database_away(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Postgres refusing or not answering, with the first line of the driver's error as the cause"""
+    nobody = engine(DatabaseSettings(host="127.0.0.1", port=_closed_port()).url)
+
+    def refused() -> int:
+        with nobody.connect():
+            return 1
+
+    [found] = check({PROXY: 200, GATEWAY: 204}, version=refused)
+    assert found.startswith("the database cannot be reached ((psycopg2.OperationalError) connection to server")
+    assert found.endswith("Connection refused): tickets, user events and admin changes fail")
+
+    def stalled() -> int:
+        time.sleep(0.1)
+        return 1
+
+    monkeypatch.setattr(health, "FETCH_SECONDS", 0.01)
+    assert check({PROXY: 200, GATEWAY: 204}, version=stalled) == [
+        "the database cannot be reached (timed out): tickets, user events and admin changes fail"
+    ]
+
+
 def test_agent_gets_its_first_report_window() -> None:
     """Right after a start the agent has not reported yet; that is no problem until PRESENCE_TTL passed"""
     assert check({PROXY: 200, GATEWAY: 204}, presence_age=float("inf"), uptime=5.0) == []
@@ -67,7 +98,7 @@ def test_unchecked_urls() -> None:
     async def fetch(url: str) -> Answer:
         raise AssertionError(url)
 
-    assert asyncio.run(problems(fetch, "", "", 1.0, 1000.0, PRESENCE_TTL)) == []
+    assert asyncio.run(problems(fetch, lambda: 1, "", "", 1.0, 1000.0, PRESENCE_TTL)) == []
 
 
 class NoNames(AbstractResolver):
@@ -150,7 +181,10 @@ def test_watch_logs_each_change(caplog: pytest.LogCaptureFixture) -> None:
     """A problem is logged with its cause when it appears, and the recovery when it goes"""
     gone = f"http://127.0.0.1:{_closed_port()}/readyz"
     state = SimpleNamespace(
-        settings=SimpleNamespace(proxy_ready_url="", gateway_ready_url=gone), presence=(time.monotonic(), {}), health=[]
+        settings=SimpleNamespace(proxy_ready_url="", gateway_ready_url=gone),
+        store=SimpleNamespace(version=lambda: 1),
+        presence=(time.monotonic(), {}),
+        health=[],
     )
     app: Any = SimpleNamespace(state=state)
 
@@ -173,9 +207,9 @@ def test_watch_logs_each_change(caplog: pytest.LogCaptureFixture) -> None:
     assert caplog.records[-1].getMessage() == "Voice is healthy"
 
 
-def test_healthcheck_reports_the_last_check(tmp_path: Path) -> None:
+def test_healthcheck_reports_the_last_check(database: DatabaseSettings, tmp_path: Path) -> None:
     """Always 200 for the kubelet; rmapi reads healthy and why not"""
-    app = create_app(Settings(database=tmp_path / "db.sqlite", templates_dir=tmp_path, ui_dir=tmp_path / "none"))
+    app = create_app(Settings(database=database, templates_dir=tmp_path, ui_dir=tmp_path / "none"))
     client = TestClient(app)
     assert client.get("/api/v1/healthcheck").json() == {"healthy": True, "extra": ""}
     problem = "the voice gateway is not ready (name resolution failed): browsers cannot talk"
@@ -185,10 +219,15 @@ def test_healthcheck_reports_the_last_check(tmp_path: Path) -> None:
     assert response.json() == {"healthy": False, "extra": problem}
 
 
-def test_lifespan_runs_the_health_check(tmp_path: Path) -> None:
+def test_healthcheck_needs_no_identity(client: TestClient) -> None:
+    """The kubelet asks without one"""
+    assert client.get("/api/v1/healthcheck").json()["healthy"] is True
+
+
+def test_lifespan_runs_the_health_check(database: DatabaseSettings, tmp_path: Path) -> None:
     """With nothing to ask (empty URLs) and the agent's first window still open, the running check finds nothing"""
     settings = Settings(
-        database=tmp_path / "db.sqlite",
+        database=database,
         templates_dir=tmp_path,
         ui_dir=tmp_path / "none",
         proxy_ready_url="",

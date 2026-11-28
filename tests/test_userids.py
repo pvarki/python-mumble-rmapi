@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from mumblermapi.userids import UserIds
+from mumblermapi.agent.userids import UserIds
 
 
 def test_assign_and_persist(tmp_path: Path) -> None:
